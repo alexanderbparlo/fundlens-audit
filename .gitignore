@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.env*.local
+
+# windows alternate-data-stream artifacts (from WSL downloads)
+*:Zone.Identifier
