@@ -17,6 +17,20 @@ type Schema<T> = {
     | { success: false; error: { issues: { path: PropertyKey[]; message: string }[] } }
 }
 
+// A `max_tokens` stop reason means the model ran out of budget mid-response, so
+// the JSON is truncated. Detect it explicitly — otherwise it surfaces downstream
+// as an opaque "invalid JSON" parse error that hides the real cause (raise the
+// agent's max_tokens in agentConfig). Note: adaptive thinking tokens draw from
+// the same budget, so truncation can happen even when the text looks short.
+function assertNotTruncated(stopReason: string | null, phase: string): void {
+  if (stopReason === 'max_tokens') {
+    throw new Error(
+      `${phase} response was truncated at max_tokens (stop_reason=max_tokens). ` +
+      `The output JSON is incomplete — increase this agent's max_tokens in agentConfig.ts.`,
+    )
+  }
+}
+
 /**
  * Call an agent with a text-only user message, validate the JSON output against
  * a Zod schema, and retry once with a correction prompt if validation fails.
@@ -38,6 +52,7 @@ export async function runAgent<T>(
     messages: [{ role: 'user', content: userMessage }],
   })
 
+  assertNotTruncated(response.stop_reason, 'Agent')
   const rawText = extractText(response.content)
   const parsed = parseAgentJson<unknown>(rawText)
 
@@ -62,6 +77,7 @@ export async function runAgent<T>(
     ],
   })
 
+  assertNotTruncated(retryResponse.stop_reason, 'Agent retry')
   const retryRaw = extractText(retryResponse.content)
   const retryParsed = parseAgentJson<unknown>(retryRaw)
 

@@ -30,19 +30,25 @@ export const AGENT_CONFIGS = {
   },
   reviewer: {
     model: MODEL_VERSION,
-    max_tokens: 10000,
+    // Budget is shared with adaptive thinking tokens; headroom prevents the
+    // findings JSON from truncating mid-array. (Pro plan allows the longer gen.)
+    max_tokens: 16000,
     thinking: { type: 'adaptive' as const },
     output_config: { effort: 'medium' as const },
   },
   challenger: {
     model: CHALLENGER_MODEL_VERSION,
-    max_tokens: 10000,
+    // High effort spends the most on thinking; the challenges array is large.
+    // Historically truncated at 10k → opaque "invalid JSON". Doubled.
+    max_tokens: 20000,
     thinking: { type: 'adaptive' as const },
     output_config: { effort: 'high' as const },
   },
   synthesizer: {
     model: MODEL_VERSION,
-    max_tokens: 16000,
+    // Echoes back ALL merged findings + validations + PBC list — the largest
+    // output in the pipeline. Historically truncated at 16k.
+    max_tokens: 24000,
     thinking: { type: 'adaptive' as const },
     output_config: { effort: 'medium' as const },
   },
