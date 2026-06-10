@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getEngagement, addDocumentToEngagement, addAuditJobToEngagement } from '@/lib/db/engagements'
+import { getEngagement, addAuditJobToEngagement } from '@/lib/db/engagements'
+import { findDocumentsByIds } from '@/lib/db/documents'
 import { createAuditJob } from '@/lib/db/auditJobs'
 import { enforceRateLimit } from '@/lib/rateLimit'
 import type { AuditScope, FundType } from '@/types'
@@ -33,9 +34,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Engagement not found.' }, { status: 404 })
     }
 
-    // Add documents to the engagement (idempotent — no-op if already linked)
-    for (const docId of documentIds as string[]) {
-      await addDocumentToEngagement(engagementId, docId)
+    // Isolation enforcement (fix-log item 11): every document in the run must
+    // belong to THIS engagement. Documents from other engagements — or unknown
+    // IDs — are rejected, never silently linked.
+    const docs = await findDocumentsByIds(documentIds as string[])
+    const foundIds = new Set(docs.map(d => d.id))
+    const missing = (documentIds as string[]).filter(id => !foundIds.has(id))
+    if (missing.length > 0) {
+      return NextResponse.json(
+        { success: false, error: `Documents not found: ${missing.join(', ')}` },
+        { status: 404 }
+      )
+    }
+    const foreign = docs.filter(d => d.engagementId !== engagementId)
+    if (foreign.length > 0) {
+      return NextResponse.json(
+        { success: false, error: `Documents do not belong to this engagement: ${foreign.map(d => d.filename).join(', ')}` },
+        { status: 403 }
+      )
     }
 
     const job = await createAuditJob({

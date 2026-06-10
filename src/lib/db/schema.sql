@@ -2,28 +2,9 @@
 -- Run this once against your Neon project after DATABASE_URL is set.
 -- Connection pooling is handled by @neondatabase/serverless.
 
--- ── Documents ─────────────────────────────────────────────────────────────────
--- Each document is stored once in Vercel Blob and profiled once by the Profiler agent.
--- Content-hash deduplication prevents re-processing the same file.
-
-CREATE TABLE IF NOT EXISTS documents (
-  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  content_hash      TEXT        UNIQUE NOT NULL,          -- SHA-256, hex string
-  filename          TEXT        NOT NULL,
-  file_type         TEXT        NOT NULL,                  -- MIME type
-  blob_url          TEXT        NOT NULL,
-  file_size_bytes   INTEGER     NOT NULL,
-  detected_category TEXT        NOT NULL DEFAULT 'Unknown',
-  profile_json      JSONB,                                 -- DocumentProfile, null until profiled
-  profiled_at       TIMESTAMPTZ,
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_documents_hash ON documents (content_hash);
-CREATE INDEX IF NOT EXISTS idx_documents_category ON documents (detected_category);
-
 -- ── Engagements ───────────────────────────────────────────────────────────────
 -- Named groupings: one engagement per fund / review cycle.
+-- (Defined before documents because documents.engagement_id references it.)
 
 CREATE TABLE IF NOT EXISTS engagements (
   id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -38,6 +19,41 @@ CREATE TABLE IF NOT EXISTS engagements (
 );
 
 CREATE INDEX IF NOT EXISTS idx_engagements_fund_name ON engagements (fund_name);
+
+-- ── Documents ─────────────────────────────────────────────────────────────────
+-- Each document belongs to exactly one engagement (isolation boundary — fix-log
+-- item 11). Content-hash deduplication is scoped WITHIN an engagement: the same
+-- file uploaded to two engagements is stored as two independent rows.
+
+CREATE TABLE IF NOT EXISTS documents (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  engagement_id     UUID        REFERENCES engagements(id) ON DELETE CASCADE,
+  content_hash      TEXT        NOT NULL,                  -- SHA-256, hex string
+  filename          TEXT        NOT NULL,
+  file_type         TEXT        NOT NULL,                  -- MIME type
+  blob_url          TEXT        NOT NULL,
+  file_size_bytes   INTEGER     NOT NULL,
+  detected_category TEXT        NOT NULL DEFAULT 'Unknown',
+  profile_json      JSONB,                                 -- DocumentProfile, null until profiled
+  profiled_at       TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_engagement_hash ON documents (engagement_id, content_hash);
+CREATE INDEX IF NOT EXISTS idx_documents_engagement ON documents (engagement_id);
+CREATE INDEX IF NOT EXISTS idx_documents_category ON documents (detected_category);
+
+-- Migration: run this if upgrading from a schema version before 1.2.0
+-- (documents were previously a global pool deduplicated by content hash):
+-- ALTER TABLE documents ADD COLUMN IF NOT EXISTS engagement_id UUID REFERENCES engagements(id) ON DELETE CASCADE;
+-- UPDATE documents d SET engagement_id = e.id FROM engagements e
+--   WHERE d.id = ANY(e.document_ids) AND d.engagement_id IS NULL;
+-- ALTER TABLE documents DROP CONSTRAINT IF EXISTS documents_content_hash_key;
+-- DROP INDEX IF EXISTS idx_documents_hash;
+-- CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_engagement_hash ON documents (engagement_id, content_hash);
+-- CREATE INDEX IF NOT EXISTS idx_documents_engagement ON documents (engagement_id);
+-- Documents never linked to an engagement keep engagement_id NULL and become
+-- invisible to the app — review them manually before deleting.
 
 -- ── Audit jobs ────────────────────────────────────────────────────────────────
 -- One row per audit run. Updated in place as each phase completes.

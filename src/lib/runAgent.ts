@@ -1,5 +1,9 @@
+import type Anthropic from '@anthropic-ai/sdk'
 import client from './anthropic/client'
 import { extractText, parseAgentJson } from './buildDocumentBlocks'
+
+// Either a plain text message or a content-block array (document blocks + text)
+type UserContent = string | Anthropic.Messages.ContentBlockParam[]
 
 // Structural type compatible with every entry in AGENT_CONFIGS
 type AgentConfig = {
@@ -40,31 +44,45 @@ function assertNotTruncated(stopReason: string | null, phase: string): void {
 export async function runAgent<T>(
   config: AgentConfig,
   systemPrompt: string,
-  userMessage: string,
+  userMessage: UserContent,
   schema: Schema<T>,
 ): Promise<T> {
-  const response = await client.messages.create({
+  // Streamed under the hood: the SDK refuses non-streaming calls whose
+  // max_tokens implies >10 min worst case (threshold ≈ 21,333 tokens), which
+  // the Synthesizer's 24k budget exceeds. finalMessage() returns the same
+  // Message shape as messages.create(), so downstream handling is unchanged.
+  const response = await client.messages.stream({
     model:         config.model,
     max_tokens:    config.max_tokens,
     thinking:      config.thinking,
     output_config: config.output_config,
     system:        systemPrompt,
     messages: [{ role: 'user', content: userMessage }],
-  })
+  }).finalMessage()
 
   assertNotTruncated(response.stop_reason, 'Agent')
   const rawText = extractText(response.content)
-  const parsed = parseAgentJson<unknown>(rawText)
 
-  const result = schema.safeParse(parsed)
-  if (result.success) return result.data
+  // A JSON-parse failure gets the same single correction retry as a schema
+  // failure — previously it was instantly fatal, which wasted the whole run
+  // on recoverable output defects (stray fences, trailing commentary).
+  let correction: string
+  try {
+    const parsed = parseAgentJson<unknown>(rawText)
+    const result = schema.safeParse(parsed)
+    if (result.success) return result.data
 
-  // Retry once with schema error injected into the conversation
-  const issues = result.error.issues
-    .map(i => `${i.path.map(String).join('.')}: ${i.message}`)
-    .join('; ')
+    const issues = result.error.issues
+      .map(i => `${i.path.map(String).join('.')}: ${i.message}`)
+      .join('; ')
+    correction = `Schema validation failed: ${issues}. Return corrected JSON only.`
+  } catch {
+    correction =
+      'Your previous output could not be parsed as JSON. Return ONLY the complete, ' +
+      'valid JSON object — no markdown fences, no text before or after it.'
+  }
 
-  const retryResponse = await client.messages.create({
+  const retryResponse = await client.messages.stream({
     model:         config.model,
     max_tokens:    config.max_tokens,
     thinking:      config.thinking,
@@ -73,9 +91,9 @@ export async function runAgent<T>(
     messages: [
       { role: 'user',      content: userMessage },
       { role: 'assistant', content: rawText },
-      { role: 'user',      content: `Schema validation failed: ${issues}. Return corrected JSON only.` },
+      { role: 'user',      content: correction },
     ],
-  })
+  }).finalMessage()
 
   assertNotTruncated(retryResponse.stop_reason, 'Agent retry')
   const retryRaw = extractText(retryResponse.content)

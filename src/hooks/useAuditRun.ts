@@ -94,16 +94,13 @@ export function useAuditRun(): AuditRunHook {
   const [error,          setError]          = useState<string | null>(null)
 
   // ── Initial data load ───────────────────────────────────────────────────────
+  // Documents are scoped per engagement and loaded on engagement selection.
   useEffect(() => {
     ;(async () => {
       try {
-        const [engRes, docsRes] = await Promise.all([
-          fetch('/api/engagements'),
-          fetch('/api/documents'),
-        ])
-        const [engJson, docsJson] = await Promise.all([engRes.json(), docsRes.json()])
-        if (engJson.success)  setEngagements(engJson.data)
-        if (docsJson.success) setDocuments(docsJson.data)
+        const engRes = await fetch('/api/engagements')
+        const engJson = await engRes.json()
+        if (engJson.success) setEngagements(engJson.data)
       } catch {
         setError('Failed to load initial data.')
       } finally {
@@ -111,6 +108,25 @@ export function useAuditRun(): AuditRunHook {
       }
     })()
   }, [])
+
+  // ── Load this engagement's documents whenever the engagement changes ────────
+  const currentEngagementId = currentEngagement?.id ?? null
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (!currentEngagementId) {
+        if (!cancelled) setDocuments([])
+        return
+      }
+      try {
+        const docs = await apiFetch<FundDocument[]>(`/api/documents?engagementId=${currentEngagementId}`)
+        if (!cancelled) setDocuments(docs)
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load documents.')
+      }
+    })()
+    return () => { cancelled = true }
+  }, [currentEngagementId])
 
   // ── Load finding statuses whenever a completed job is in view ────────────────
   const completedJobId = currentJob?.finalReport ? currentJob.id : null
@@ -177,15 +193,21 @@ export function useAuditRun(): AuditRunHook {
 
   const selectEngagement = useCallback((engagement: Engagement) => {
     setCurrentEngagement(engagement)
+    setSelectedDocIds(new Set())   // selection must not carry across engagements
     setViewState('library')
   }, [])
 
   const uploadDocument = useCallback(async (file: File) => {
+    if (!currentEngagement) {
+      setError('Select an engagement before uploading documents.')
+      return
+    }
     const key = file.name
     setUploadProgress(p => ({ ...p, [key]: 'uploading' }))
     try {
       const formData = new FormData()
       formData.append('file', file)
+      formData.append('engagementId', currentEngagement.id)
       const uploadRes  = await fetch('/api/documents/upload', { method: 'POST', body: formData })
       const uploadJson = await uploadRes.json()
       if (!uploadJson.success) throw new Error(uploadJson.error)
@@ -204,7 +226,7 @@ export function useAuditRun(): AuditRunHook {
       setUploadProgress(p => ({ ...p, [key]: 'error' }))
       setError(err instanceof Error ? err.message : 'Upload failed.')
     }
-  }, [])
+  }, [currentEngagement])
 
   const profileDocument = useCallback(async (docId: string) => {
     try {

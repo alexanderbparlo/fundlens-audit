@@ -21,9 +21,10 @@ export function buildDocumentBlocks(
       },
       title: file.name,
     }
-    // Only cache when the same document will be read by multiple agents.
-    // Cache the first document in the set — it's the highest-cost input.
-    if (cache && index === 0) {
+    // Prompt caching is prefix-based: a breakpoint on the LAST document block
+    // caches every block before it. This pays off on the runAgent correction
+    // retry, which re-sends the identical document prefix.
+    if (cache && index === base64Files.length - 1) {
       ;(block as DocumentBlock & { cache_control?: { type: 'ephemeral' } }).cache_control = {
         type: 'ephemeral',
       }
@@ -48,15 +49,31 @@ export function extractText(
  * Defensive parsing for agent outputs that occasionally wrap JSON in fences.
  */
 export function parseAgentJson<T>(raw: string): T {
+  // Trim FIRST — a leading newline before a ```json fence otherwise defeats
+  // the ^-anchored strips (observed in prod on the Synthesizer, 2026-06-09).
   const cleaned = raw
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/, '')
     .trim()
 
   try {
     return JSON.parse(cleaned) as T
   } catch {
-    throw new Error(`Agent returned invalid JSON.\n\nRaw output (first 500 chars):\n${raw.slice(0, 500)}`)
+    // Fallback: extract the outermost JSON object. Tolerates preamble text
+    // before the JSON and commentary after the closing brace/fence.
+    const start = cleaned.indexOf('{')
+    const end = cleaned.lastIndexOf('}')
+    if (start !== -1 && end > start) {
+      try {
+        return JSON.parse(cleaned.slice(start, end + 1)) as T
+      } catch {
+        // fall through to the diagnostic error
+      }
+    }
+    throw new Error(
+      `Agent returned invalid JSON.\n\nRaw output (first 500 chars):\n${raw.slice(0, 500)}` +
+      `\n\nRaw output (last 300 chars):\n${raw.slice(-300)}`,
+    )
   }
 }

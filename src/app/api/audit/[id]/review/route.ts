@@ -4,6 +4,7 @@ import { handleAnthropicError } from '@/lib/anthropic/errorHandler'
 import { buildReviewerSystemPrompt, AGENT_CONFIGS } from '@/lib/agentConfig'
 import { reviewerOutputSchema } from '@/lib/zod/schemas'
 import { runAgent } from '@/lib/runAgent'
+import { runDeterministicChecks, formatChecksForPrompt } from '@/lib/validations'
 import { enforceRateLimit } from '@/lib/rateLimit'
 import type { ReviewerOutput } from '@/types'
 
@@ -40,11 +41,15 @@ export async function POST(
       await updateAuditJobStatus(id, 'reviewing')
     }
 
+    const deterministicBlock = formatChecksForPrompt(runDeterministicChecks(job.preparerOutput))
+
     const userMessage = `Here is the structured fund data extracted by the Preparer agent for a ${job.fundType} fund.
 
 === PREPARER OUTPUT ===
 ${JSON.stringify(job.preparerOutput, null, 2)}
 ===
+
+${deterministicBlock}
 
 Perform your systematic validation and return your ReviewerOutput JSON.`
 

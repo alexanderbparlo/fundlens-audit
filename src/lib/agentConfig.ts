@@ -4,13 +4,16 @@ import type { AuditScope, FundType } from '@/types'
 // Version tracking — bump PROMPT_VERSION on any system prompt change so
 // historical audit runs can be compared meaningfully.
 // ─────────────────────────────────────────────────────────────────────────────
-export const PROMPT_VERSION = '1.1.0'
+export const PROMPT_VERSION = '1.2.0'
 export const MODEL_VERSION = 'claude-opus-4-8'
-export const CHALLENGER_MODEL_VERSION = 'claude-opus-4-8'
+export const CHALLENGER_MODEL_VERSION = 'claude-fable-5'
 
 // ── Per-agent model configuration ────────────────────────────────────────────
 // Thinking effort is calibrated to the cognitive demands of each role.
-// Preparer and Profiler: extraction tasks — 'low' effort is sufficient and fast.
+// Profiler: classification/triage — 'low' effort is sufficient and fast.
+// Preparer: reads the full document set directly (round-1 fix: the profile-only
+//   funnel dropped holdings tables, stated metrics, and valuation prose) —
+//   'medium' effort with headroom for large investments arrays.
 // Reviewer: systematic validation — 'medium' effort.
 // Challenger: adversarial reasoning — 'high' effort earns its cost here.
 // Synthesizer: integration of prior structured outputs — 'medium' effort.
@@ -24,9 +27,11 @@ export const AGENT_CONFIGS = {
   },
   preparer: {
     model: MODEL_VERSION,
-    max_tokens: 4096,
+    // Holdings schedules alone can run to dozens of positions; 4096 forced
+    // lossy extraction in round 1.
+    max_tokens: 16000,
     thinking: { type: 'adaptive' as const },
-    output_config: { effort: 'low' as const },
+    output_config: { effort: 'medium' as const },
   },
   reviewer: {
     model: MODEL_VERSION,
@@ -237,7 +242,7 @@ Note: This document is submitted by a financial professional for fund audit revi
 export function buildPreparerSystemPrompt(fundType: FundType, auditScope: AuditScope = 'full'): string {
   return `You are the Preparer agent in the FundLens Audit pipeline.
 
-You receive structured profiles for each document in a fund document set. Your job is to synthesize a comprehensive cross-document data extraction. You do NOT perform analysis or judgment — that is for downstream agents.
+You receive the COMPLETE fund document set (attached as documents) plus a structured profile of each document produced by the Profiler agent. Extract all data DIRECTLY FROM THE SOURCE DOCUMENTS — the profiles are navigation aids (document type, section index, warnings), not the source of truth. You do NOT perform analysis or judgment — that is for downstream agents.
 
 Fund type: ${fundType}
 Audit scope: ${auditScope === 'partial' ? 'PARTIAL — user has intentionally uploaded a subset of documents' : 'FULL'}
@@ -245,6 +250,14 @@ Audit scope: ${auditScope === 'partial' ? 'PARTIAL — user has intentionally up
 Return ONLY valid JSON matching the PreparerOutput schema below. Every numeric field must have a corresponding source citation. If a field cannot be extracted from any provided document, set it to null — do not guess or estimate. If a field has conflicting values across documents, extract both and note the conflict in the citation.
 
 This output will be passed to Reviewer and Challenger agents. Source citation accuracy is critical for the human reviewer who will rely on page references.
+
+EXTRACTION RULES (each addresses a documented round-1 failure):
+1. HOLDINGS TABLES: Extract EVERY position in any portfolio holdings / schedule of investments table into the investments array. Tables frequently continue across page breaks — a row that begins at the bottom of one page may complete at the top of the next; read continuation text before concluding a row or table is incomplete. Aggregate rows such as "All other investments (14 companies)" are valid positions — extract them with the aggregate name. An empty investments array is acceptable ONLY when no holdings data exists anywhere in the document set.
+2. STATED PERFORMANCE METRICS: If the documents state TVPI, DPI, RVPI, IRR, MOIC, or cumulative distributions anywhere (summary tables, financial highlights, cover pages), extract the values VERBATIM into statedPerformanceMetrics. Do NOT compute metrics yourself, and do NOT leave them null when they are printed in the document.
+3. VALUATION PROSE: Read any "Valuation Methodology", "Fair Value", or similar prose sections in full. If an independent valuation firm is named, capture the firm name and stated scope of coverage in valuationDisclosures. Prose disclosures count as disclosures even when no structured table exists.
+4. ROLLFORWARD BEGINNING BALANCES: Extract capital account beginning balances ONLY as explicitly disclosed — never inferred from ending balance and activity. If not disclosed, set beginningBalance to null.
+5. WORKPAPER SIGN-OFFS: If any document carries preparer/reviewer sign-off metadata (Prepared By / Reviewed By with dates), extract it into workpaperMetadata exactly as printed, even if the dates look wrong — downstream validation checks the sequence.
+6. NO ARITHMETIC: Extract disclosed values only. Deterministic code performs all reconciliation calculations downstream.
 
 Required output schema:
 {
@@ -257,7 +270,12 @@ Required output schema:
   "calledCapital": number or null,
   "uncalledCapital": number or null,
   "nav": { "total": number, "perUnit": number or null, "asOfDate": "YYYY-MM-DD" } or null,
-  "capitalAccounts": [{ "lpId": string, "contributions": number, "distributions": number, "allocatedIncomeLoss": number, "endingBalance": number }],
+  "capitalAccounts": [{ "lpId": string, "beginningBalance": number or null, "contributions": number, "distributions": number, "allocatedIncomeLoss": number, "endingBalance": number }],
+  "statedPerformanceMetrics": { "tvpi": number or null, "dpi": number or null, "rvpi": number or null, "netIrr": decimal or null, "grossIrr": decimal or null, "moic": number or null, "cumulativeDistributions": number or null } or null,
+  "balanceSheet": { "totalAssets": number or null, "totalLiabilities": number or null, "totalPartnersCapital": number or null, "cashAndEquivalents": number or null, "asOfDate": "YYYY-MM-DD" or null } or null,
+  "navBridge": { "periodLabel": string or null, "beginningNav": number or null, "contributions": number or null, "distributions": number or null, "realizedGainLoss": number or null, "unrealizedGainLoss": number or null, "feesAndExpenses": number or null, "otherChanges": number or null, "endingNav": number or null } or null,
+  "valuationDisclosures": { "independentValuationFirm": string or null, "independentValuationScope": string or null, "methodologySummary": string or null, "unobservableInputsDisclosed": boolean or null } or null,
+  "workpaperMetadata": [{ "documentName": string, "preparedBy": string or null, "preparedDate": "YYYY-MM-DD" or null, "reviewedBy": string or null, "reviewedDate": "YYYY-MM-DD" or null }],
   "investments": [{ "name": string, "cost": number, "fairValue": number, "unrealizedGainLoss": number, "asOfDate": "YYYY-MM-DD", "fairValueLevel": 1|2|3|null, "valuationMethodology": string or null }],
   "feeTerms": {
     "managementFeeRate": decimal (e.g. 0.02 for 2%) or null,
@@ -317,17 +335,32 @@ ${ILPA_PRINCIPLES}
 
 ${REVIEWER_FUND_ADDENDA[fundType]}
 
+DETERMINISTIC VALIDATION RESULTS — read this first:
+Your input includes a block of reconciliation checks computed deterministically by code (IDs D-001, D-002, ...). These results are arithmetically authoritative:
+- Do NOT perform your own reconciliation arithmetic and do NOT recompute these checks.
+- Translate each deterministic result into an entry in your crossDocumentValidations array, preserving its status, and cite its check ID in the "check" field.
+- For each FAIL, write a finding that interprets its significance using the attached note — a failed bridge with undisclosed components is a disclosure gap, not necessarily an arithmetic error.
+- Never raise an arithmetic finding that contradicts a deterministic PASS.
+
+EXTRACTION GAP vs. DOCUMENT GAP — required language discipline:
+A null or empty field in the Preparer data means the value WAS NOT CAPTURED — it does not prove the document omits it. Before asserting that something is "not disclosed", check the relevant structured fields (statedPerformanceMetrics, valuationDisclosures, balanceSheet, navBridge, investments). When a field is null:
+- Phrase the finding as "not captured in extraction — verify against the source document" and set requiresHumanVerification to true.
+- Reserve "not disclosed in the document" for cases where the extraction affirmatively confirms absence (e.g. valuationDisclosures.independentValuationFirm extracted as null WITH a methodology section captured).
+
 VALIDATION CHECKLIST — perform all applicable checks:
 
 NAV RECONCILIATION:
-- Does reported total NAV equal the sum of LP ending capital account balances? Calculate the variance.
+- Interpret the deterministic NAV checks (NAV vs. LP balances, NAV bridge, balance sheet face). Do not recompute them.
 - Is the NAV as-of-date consistent with the fiscal year end?
-- Do unrealized gains/losses in the investment schedule reconcile to the change in fair values from cost basis?
+- Do unrealized gains/losses in the investment schedule align with the disclosed valuation methodology?
 
 CAPITAL ACCOUNT VALIDATION:
-- For each LP: beginning balance + contributions + allocated income/loss - distributions = ending balance?
-- Does the sum of all LP ending balances equal the fund's total NAV? Identify any variance.
+- Interpret the deterministic per-LP rollforward results. A beginning balance that fails to roll forward to the disclosed ending balance is a capital account integrity finding.
 - Is the income/loss allocation methodology specified and consistent with the LPA?
+
+CLERICAL ACCURACY:
+- Scan extracted excerpts, key facts, and citations for clerical errors: misspellings, transposed digits, inconsistent fund names across documents, date typos (e.g. a sign-off year inconsistent with the period), and mislabeled column headers.
+- Clerical errors are "informational" unless they affect a reported figure, in which case escalate to "warning".
 
 MANAGEMENT FEE VALIDATION:
 - Management fee amount should equal: stated rate × stated base (committed or invested capital). Show the calculation.
@@ -433,6 +466,10 @@ YOUR MANDATE — apply all of the following lenses:
 
 8. CONFLICT OF INTEREST: Related-party transactions, affiliated service providers, co-investment allocation, placement agents. Any undisclosed potential for self-dealing.
 
+DETERMINISTIC VALIDATION RESULTS: Your input includes reconciliation checks computed deterministically by code (IDs D-001, D-002, ...). They are arithmetically authoritative — do not recompute them, and do not build a challenge on arithmetic that contradicts a PASS result. FAIL results are strong raw material for challenges; cite the check ID.
+
+EXTRACTION GAP vs. DOCUMENT GAP: A null field in the extracted data means the value was not captured, not that the document omits it. Before alleging that a disclosure is absent, check the structured fields (statedPerformanceMetrics, valuationDisclosures, balanceSheet, navBridge, investments). If stated metrics or an independent valuation firm ARE present in the extraction, you may not claim they are undisclosed — challenge their substance (scope limits, methodology, independence) instead.
+
 For each challenge, identify:
 - Whether you are challenging a Reviewer finding (targetFindingId) or raising a new finding (null)
 - The specific benchmark or standard you are measuring against
@@ -505,6 +542,12 @@ SYNTHESIS RULES:
 
 IMPORTANT DISCLAIMER TO INCLUDE: Every finding represents a matter for qualified professional review. This report is AI-generated decision support, not a professional audit opinion or sign-off.
 8. DATE METADATA: Do NOT include "Date Prepared", "Date Reviewed", or any date metadata lines in the executiveSummary or any other text field. Dates are rendered separately in the report interface.
+11. COMPLETENESS — two distinct concepts, never conflate them:
+   - DOCUMENT SET completeness: which document TYPES were provided vs. recommended. This belongs ONLY in documentSetCompleteness and must not generate findings in full-scope audits unless a recommended type is absent.
+   - CONTENT completeness: disclosures missing WITHIN a provided document (e.g. a financial statement lacking a subsequent events note). These are scored findings in the Completeness category.
+   A statement like "the NAV report does not contain fee terms" about a document type that never contains fee terms is NEITHER — it is a scope observation, severity "informational" at most.
+12. EXTRACTION-GAP LANGUAGE: Where a Reviewer or Challenger finding is phrased as "not captured in extraction — verify against source", preserve that framing in the merged finding and keep requiresHumanVerification true. Do not harden it into "not disclosed".
+13. DETERMINISTIC CHECK IDs: Findings citing deterministic check IDs (D-001, ...) are arithmetically authoritative — do not downgrade or contradict their computed results during merging.
 9. SPELLING: Proofread all generated text before returning. Common errors to avoid: "substntial" (correct: "substantial"), "reccommend" (correct: "recommend"), "occured" (correct: "occurred").
 10. SEVERITY IN TEXT: Do not use "high materiality" language in the description or recommendation of informational findings. Informational findings are advisory by definition.
 

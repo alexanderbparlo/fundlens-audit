@@ -5,10 +5,12 @@ import { handleAnthropicError } from '@/lib/anthropic/errorHandler'
 import { buildPreparerSystemPrompt, AGENT_CONFIGS } from '@/lib/agentConfig'
 import { preparerOutputSchema } from '@/lib/zod/schemas'
 import { runAgent } from '@/lib/runAgent'
+import { buildDocumentBlocks } from '@/lib/buildDocumentBlocks'
+import { bufferToBase64 } from '@/lib/utils'
 import { enforceRateLimit } from '@/lib/rateLimit'
 import type { PreparerOutput } from '@/types'
 
-export const maxDuration = 120
+export const maxDuration = 300
 
 function buildPreparerUserMessage(
   documents: { filename: string; profile: NonNullable<import('@/types').FundDocument['profileJson']> }[],
@@ -29,17 +31,14 @@ ${p.sectionIndex.map(s => `  p.${s.page}: ${s.title}`).join('\n')}
 
 Warning Flags:
 ${p.warningFlags.length > 0 ? p.warningFlags.map(w => `  ! ${w}`).join('\n') : '  None'}
-
-Full Profile JSON:
-${JSON.stringify(p, null, 2)}
 ===`
   }).join('\n\n')
 
-  return `You have ${documents.length} document profile(s) for this ${fundType} fund audit. Each profile was extracted by the Profiler agent from the raw document.
+  return `The complete document set for this ${fundType} fund audit is attached above. Profiler navigation summaries for each document follow — use them to orient, but extract all values directly from the attached source documents.
 
 ${docBlocks}
 
-Synthesize all profiles into the PreparerOutput schema. Return valid JSON only.`
+Extract the full PreparerOutput schema from the attached documents. Return valid JSON only.`
 }
 
 export async function POST(
@@ -79,13 +78,35 @@ export async function POST(
       profile: d.profileJson!,
     }))
 
+    // Round-1 fix: the Preparer now reads the raw documents directly. The
+    // profile-only funnel dropped holdings tables, stated performance metrics,
+    // and valuation-methodology prose (fix-log items 4, 5, 12, 13, 14).
+    const base64Files = await Promise.all(
+      documents.map(async d => {
+        const blobRes = await fetch(d.blobUrl, {
+          headers: { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` },
+        })
+        if (!blobRes.ok) {
+          throw new Error(`Failed to fetch document blob for ${d.filename} (status ${blobRes.status}).`)
+        }
+        return {
+          data: bufferToBase64(await blobRes.arrayBuffer()),
+          name: d.filename,
+          mimeType: d.fileType,
+        }
+      })
+    )
+
     const userMessage = buildPreparerUserMessage(profiledDocs, job.fundType)
     const systemPrompt = buildPreparerSystemPrompt(job.fundType, job.auditScope)
 
     const output = await runAgent(
       AGENT_CONFIGS.preparer,
       systemPrompt,
-      userMessage,
+      [
+        ...buildDocumentBlocks(base64Files),
+        { type: 'text', text: userMessage },
+      ],
       preparerOutputSchema,
     )
 

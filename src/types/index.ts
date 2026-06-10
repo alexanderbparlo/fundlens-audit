@@ -85,7 +85,8 @@ export interface DocumentProfile {
 
 export interface FundDocument {
   id: string
-  contentHash: string               // SHA-256 for deduplication
+  engagementId: string | null       // isolation boundary; null only on legacy rows
+  contentHash: string               // SHA-256 for deduplication (scoped per engagement)
   filename: string
   fileType: string                  // 'application/pdf' | docx mime
   blobUrl: string
@@ -128,10 +129,55 @@ export interface PreparerOutput {
   } | null
   capitalAccounts: {
     lpId: string
+    beginningBalance: number | null   // as explicitly disclosed — never inferred
     contributions: number
     distributions: number
     allocatedIncomeLoss: number
     endingBalance: number
+  }[]
+  // Stated performance metrics as disclosed in the documents — extracted verbatim,
+  // never computed. Deterministic code recomputes and compares (src/lib/validations.ts).
+  statedPerformanceMetrics: {
+    tvpi: number | null
+    dpi: number | null
+    rvpi: number | null
+    netIrr: number | null             // decimal, e.g. 0.184 for 18.4%
+    grossIrr: number | null
+    moic: number | null
+    cumulativeDistributions: number | null
+  } | null
+  balanceSheet: {
+    totalAssets: number | null
+    totalLiabilities: number | null
+    totalPartnersCapital: number | null   // or net assets
+    cashAndEquivalents: number | null
+    asOfDate: string | null
+  } | null
+  // Period capital activity bridge as disclosed (quarterly or annual)
+  navBridge: {
+    periodLabel: string | null        // e.g. "Q4 2023"
+    beginningNav: number | null
+    contributions: number | null
+    distributions: number | null
+    realizedGainLoss: number | null
+    unrealizedGainLoss: number | null
+    feesAndExpenses: number | null
+    otherChanges: number | null
+    endingNav: number | null
+  } | null
+  valuationDisclosures: {
+    independentValuationFirm: string | null   // named third-party firm, if disclosed
+    independentValuationScope: string | null  // e.g. ">80% of portfolio fair value"
+    methodologySummary: string | null         // prose summary of valuation methodology section
+    unobservableInputsDisclosed: boolean | null
+  } | null
+  // Preparer/reviewer sign-off metadata from audit workpapers
+  workpaperMetadata: {
+    documentName: string
+    preparedBy: string | null
+    preparedDate: string | null       // ISO date
+    reviewedBy: string | null
+    reviewedDate: string | null       // ISO date
   }[]
   investments: {
     name: string
