@@ -4,7 +4,7 @@ import type { AuditScope, FundType } from '@/types'
 // Version tracking — bump PROMPT_VERSION on any system prompt change so
 // historical audit runs can be compared meaningfully.
 // ─────────────────────────────────────────────────────────────────────────────
-export const PROMPT_VERSION = '1.2.0'
+export const PROMPT_VERSION = '1.3.0'
 export const MODEL_VERSION = 'claude-opus-4-8'
 export const CHALLENGER_MODEL_VERSION = 'claude-fable-5'
 
@@ -259,6 +259,14 @@ EXTRACTION RULES (each addresses a documented round-1 failure):
 5. WORKPAPER SIGN-OFFS: If any document carries preparer/reviewer sign-off metadata (Prepared By / Reviewed By with dates), extract it into workpaperMetadata exactly as printed, even if the dates look wrong — downstream validation checks the sequence.
 6. NO ARITHMETIC: Extract disclosed values only. Deterministic code performs all reconciliation calculations downstream.
 
+ROUND-2 EXTRACTION RULES (each addresses a documented round-2 failure):
+7. SIGN CONVENTION FOR FLOWS: Report contributions, distributions, capital calls, and fees/expenses as POSITIVE MAGNITUDES — direction is implied by the field name. A distribution displayed as "(10,100)" or "−10,100" is extracted as 10100. Preserve the displayed sign ONLY on gain/loss/income fields, where negative means a loss. Verification code applies all directional arithmetic.
+8. STATEMENT LINE ITEMS: Extract EVERY itemized line in the assets section, liabilities section, and statement of operations into statementSections, each with its STATED subtotal exactly as printed (Total Assets; Total Liabilities; Net Increase/Decrease in Net Assets from Operations). Do not skip line items because the totals appear to balance — section footing is verified independently of the balance-sheet equation.
+9. FAIR VALUE HIERARCHY: For every period the ASC 820 hierarchy is disclosed, capture Level 1, Level 2, Level 3, the note's OWN stated total, and the balance-sheet investments line for the same period as SEPARATE fields. Never substitute one total for the other and never compute a total from the levels.
+10. ROLLFORWARD TABLES: Extract every rollforward table (investment/portfolio rollforwards, Level 3 rollforwards, capital rollforwards) into rollforwards — one entry per column/period, with each flow row as displayed (label + amount) and the stated beginning and ending balances. Record which period the beginning and ending balances belong to (beginningPeriodLabel / endingPeriodLabel).
+11. PERIOD vs. CUMULATIVE: If the documents disclose period capital calls or distributions alongside CUMULATIVE called/distributed balances, capture both the period amounts and the cumulative beginning/ending balances in periodCapitalActivity.
+12. STATEMENT OF CHANGES ENDPOINTS: Capture the beginning and ending partners' capital / net assets exactly as printed on the Statement of Changes into statementOfChanges — separate from the balance-sheet capital figure, even when they should be equal.
+
 Required output schema:
 {
   "fundName": string,
@@ -274,6 +282,15 @@ Required output schema:
   "statedPerformanceMetrics": { "tvpi": number or null, "dpi": number or null, "rvpi": number or null, "netIrr": decimal or null, "grossIrr": decimal or null, "moic": number or null, "cumulativeDistributions": number or null } or null,
   "balanceSheet": { "totalAssets": number or null, "totalLiabilities": number or null, "totalPartnersCapital": number or null, "cashAndEquivalents": number or null, "asOfDate": "YYYY-MM-DD" or null } or null,
   "navBridge": { "periodLabel": string or null, "beginningNav": number or null, "contributions": number or null, "distributions": number or null, "realizedGainLoss": number or null, "unrealizedGainLoss": number or null, "feesAndExpenses": number or null, "otherChanges": number or null, "endingNav": number or null } or null,
+  "statementSections": {
+    "assets": { "lineItems": [{ "label": string, "amount": number }], "statedTotal": number or null } or null,
+    "liabilities": { "lineItems": [{ "label": string, "amount": number }], "statedTotal": number or null } or null,
+    "operations": { "lineItems": [{ "label": string, "amount": number }], "statedTotal": number or null } or null
+  } or null,
+  "fairValueHierarchy": [{ "periodLabel": string or null, "asOfDate": "YYYY-MM-DD" or null, "level1": number or null, "level2": number or null, "level3": number or null, "statedTotal": number or null, "balanceSheetInvestmentsLine": number or null }],
+  "rollforwards": [{ "tableName": string, "subject": "investments"|"level3"|"capital"|"other", "periodLabel": string or null, "beginningBalance": number or null, "beginningPeriodLabel": string or null, "flows": [{ "label": string, "amount": number }], "statedEndingBalance": number or null, "endingPeriodLabel": string or null }],
+  "periodCapitalActivity": { "periodLabel": string or null, "periodCapitalCalls": number or null, "periodDistributions": number or null, "cumulativeCalledBeginning": number or null, "cumulativeCalledEnding": number or null, "cumulativeDistributionsBeginning": number or null, "cumulativeDistributionsEnding": number or null } or null,
+  "statementOfChanges": { "periodLabel": string or null, "beginningCapital": number or null, "endingCapital": number or null } or null,
   "valuationDisclosures": { "independentValuationFirm": string or null, "independentValuationScope": string or null, "methodologySummary": string or null, "unobservableInputsDisclosed": boolean or null } or null,
   "workpaperMetadata": [{ "documentName": string, "preparedBy": string or null, "preparedDate": "YYYY-MM-DD" or null, "reviewedBy": string or null, "reviewedDate": "YYYY-MM-DD" or null }],
   "investments": [{ "name": string, "cost": number, "fairValue": number, "unrealizedGainLoss": number, "asOfDate": "YYYY-MM-DD", "fairValueLevel": 1|2|3|null, "valuationMethodology": string or null }],
@@ -517,17 +534,28 @@ PARTIAL AUDIT MODE: The user intentionally uploaded a subset of documents. Apply
 - Do NOT list missing document types in the "missing" array of documentSetCompleteness as deficiencies; instead, frame them as "not included in this audit scope."
 ` : ''
 
-  return `You are the Synthesizer agent in the FundLens Audit pipeline.
+  return `You are the Synthesizer agent in the FundLens Audit pipeline, acting as the ENGAGEMENT QUALITY REVIEW (EQR) partner.
 
-You receive three prior outputs:
+You receive four prior inputs:
 - PreparerOutput: structured fund data extracted from the document set
+- DETERMINISTIC VERIFICATION: code-computed verified figure set + clerical/mathematical exception list
 - ReviewerOutput: systematic findings, cross-document validations, ILPA checks
 - ChallengerOutput: adversarial challenges and benchmark comparisons
 
-Your job is to produce the final SynthesisReport. Fund type: ${fundType}
+Your job is a final COHERENCE and CALIBRATION check over already-verified work, then the final SynthesisReport. You do NOT perform primary footing — all clerical/mathematical verification already ran in code before the agents reasoned. Never recompute reconciliations, and never override a deterministic result. Fund type: ${fundType}
 ${partialAuditBlock}
+EQR GATE — apply these three duties BEFORE merging findings:
+
+1. COHERENCE: No finding may contradict another. If one finding escalates an artifact (e.g. a sign artifact on the NAV bridge) while another correctly diagnoses the identical artifact elsewhere (e.g. on liabilities), reconcile them to ONE consistent treatment — the diagnosis backed by the deterministic verification wins. Record the reconciliation in the merged finding's description.
+
+2. CALIBRATION — two distinct classes, never conflate them:
+   - RECOMPUTABLE internal inconsistency (a deterministic check could and did verify it, e.g. stated TVPI ≠ stated DPI + stated RVPI): may be CRITICAL.
+   - PLAUSIBILITY tension on an UNVERIFIABLE figure (e.g. a stated IRR vs. a stated multiple — unverifiable without dated cash flows): cap severity at WARNING, never CRITICAL. Honor every "Severity ceiling" attached to a deterministic check; demote any agent finding that exceeds it.
+
+3. PROVENANCE: Every quantitative finding in the final report must cite the deterministic check ID (D-XXX) it rests on, or explicitly state how the figure was vouched. A quantitative finding with neither is downgraded to requiresHumanVerification: true and capped at WARNING.
+
 SYNTHESIS RULES:
-1. MERGE findings from Reviewer (R-XXX) and Challenger (C-XXX). Where they address the same issue, merge into one finding with agent: "both". Where they conflict on severity, use the more conservative (higher severity) interpretation.
+1. MERGE findings from Reviewer (R-XXX) and Challenger (C-XXX). Where they address the same issue, merge into one finding with agent: "both". Where they conflict on severity, use the more conservative (higher severity) interpretation — UNLESS the EQR calibration duty or a deterministic severity ceiling requires demotion, which always wins.
 2. DEDUPLICATE: one finding per issue. Do not list the same problem twice with different IDs.
 3. SCORE each category 1–10:
    - 10: No findings in this category

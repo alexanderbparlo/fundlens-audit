@@ -68,6 +68,16 @@ export const documentProfileSchema = z.object({
 // ── PreparerOutput ────────────────────────────────────────────────────────────
 // Plausibility bounds: fee rates 0–40%, preferred return 0–25%, GP commit 0–10%.
 
+const statementLineItemSchema = z.object({
+  label:  z.string(),
+  amount: z.number(),
+})
+
+const statementSectionSchema = z.object({
+  lineItems:   z.array(statementLineItemSchema),
+  statedTotal: z.number().nullable(),
+})
+
 export const preparerOutputSchema = z.object({
   fundName:             z.string().min(1),
   fundType:             z.enum(['PE','VC','HF','Credit','RealEstate']),
@@ -116,6 +126,44 @@ export const preparerOutputSchema = z.object({
     feesAndExpenses:    z.number().nullable(),
     otherChanges:       z.number().nullable(),
     endingNav:          z.number().nullable(),
+  }).nullable(),
+  statementSections: z.object({
+    assets:      statementSectionSchema.nullable(),
+    liabilities: statementSectionSchema.nullable(),
+    operations:  statementSectionSchema.nullable(),
+  }).nullable(),
+  fairValueHierarchy: z.array(z.object({
+    periodLabel:                 z.string().nullable(),
+    asOfDate:                    z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+    level1:                      z.number().nullable(),
+    level2:                      z.number().nullable(),
+    level3:                      z.number().nullable(),
+    statedTotal:                 z.number().nullable(),
+    balanceSheetInvestmentsLine: z.number().nullable(),
+  })),
+  rollforwards: z.array(z.object({
+    tableName:            z.string(),
+    subject:              z.enum(['investments', 'level3', 'capital', 'other']),
+    periodLabel:          z.string().nullable(),
+    beginningBalance:     z.number().nullable(),
+    beginningPeriodLabel: z.string().nullable(),
+    flows:                z.array(statementLineItemSchema),
+    statedEndingBalance:  z.number().nullable(),
+    endingPeriodLabel:    z.string().nullable(),
+  })),
+  periodCapitalActivity: z.object({
+    periodLabel:                       z.string().nullable(),
+    periodCapitalCalls:                z.number().nullable(),
+    periodDistributions:               z.number().nullable(),
+    cumulativeCalledBeginning:         z.number().nullable(),
+    cumulativeCalledEnding:            z.number().nullable(),
+    cumulativeDistributionsBeginning:  z.number().nullable(),
+    cumulativeDistributionsEnding:     z.number().nullable(),
+  }).nullable(),
+  statementOfChanges: z.object({
+    periodLabel:      z.string().nullable(),
+    beginningCapital: z.number().nullable(),
+    endingCapital:    z.number().nullable(),
   }).nullable(),
   valuationDisclosures: z.object({
     independentValuationFirm:    z.string().nullable(),

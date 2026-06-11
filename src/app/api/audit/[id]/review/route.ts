@@ -4,7 +4,7 @@ import { handleAnthropicError } from '@/lib/anthropic/errorHandler'
 import { buildReviewerSystemPrompt, AGENT_CONFIGS } from '@/lib/agentConfig'
 import { reviewerOutputSchema } from '@/lib/zod/schemas'
 import { runAgent } from '@/lib/runAgent'
-import { runDeterministicChecks, formatChecksForPrompt } from '@/lib/validations'
+import { runVerification, formatVerificationForPrompt } from '@/lib/validations'
 import { enforceRateLimit } from '@/lib/rateLimit'
 import type { ReviewerOutput } from '@/types'
 
@@ -41,7 +41,10 @@ export async function POST(
       await updateAuditJobStatus(id, 'reviewing')
     }
 
-    const deterministicBlock = formatChecksForPrompt(runDeterministicChecks(job.preparerOutput))
+    // Verification is computed once in the prepare phase and persisted with the
+    // run; recompute only for legacy jobs that predate persistence.
+    const verification = job.verification ?? runVerification(job.preparerOutput)
+    const deterministicBlock = formatVerificationForPrompt(verification)
 
     const userMessage = `Here is the structured fund data extracted by the Preparer agent for a ${job.fundType} fund.
 

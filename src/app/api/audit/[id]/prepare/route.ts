@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAuditJob, updateAuditJobStatus, savePreparerOutput, setAuditJobFailed } from '@/lib/db/auditJobs'
+import { getAuditJob, updateAuditJobStatus, savePreparerOutput, saveVerification, setAuditJobFailed } from '@/lib/db/auditJobs'
 import { findDocumentsByIds } from '@/lib/db/documents'
 import { handleAnthropicError } from '@/lib/anthropic/errorHandler'
 import { buildPreparerSystemPrompt, AGENT_CONFIGS } from '@/lib/agentConfig'
 import { preparerOutputSchema } from '@/lib/zod/schemas'
 import { runAgent } from '@/lib/runAgent'
 import { buildDocumentBlocks } from '@/lib/buildDocumentBlocks'
+import { runVerification, collectTextSources } from '@/lib/validations'
 import { bufferToBase64 } from '@/lib/utils'
 import { enforceRateLimit } from '@/lib/rateLimit'
 import type { PreparerOutput } from '@/types'
@@ -56,19 +57,38 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Audit job not found.' }, { status: 404 })
     }
 
-    // Idempotent — return cached output if already prepared
-    if (job.preparerOutput) {
+    // Idempotent — return cached output if already prepared AND verified
+    if (job.preparerOutput && job.verification) {
       return NextResponse.json({ success: true, data: job, cached: true })
     }
 
-    // Fetch all document profiles for this job
+    // Fetch all document profiles for this job. Control runs (Track C) skip the
+    // profiling requirement — their extraction was injected as known-good.
     const documents = await findDocumentsByIds(job.documentIds)
-    const unprofiled = documents.filter(d => !d.profileJson).map(d => d.filename)
-    if (unprofiled.length > 0) {
-      return NextResponse.json(
-        { success: false, error: `Documents must be profiled before preparing: ${unprofiled.join(', ')}` },
-        { status: 422 }
+    if (!job.controlRun) {
+      const unprofiled = documents.filter(d => !d.profileJson).map(d => d.filename)
+      if (unprofiled.length > 0) {
+        return NextResponse.json(
+          { success: false, error: `Documents must be profiled before preparing: ${unprofiled.join(', ')}` },
+          { status: 422 }
+        )
+      }
+    }
+
+    const profilesForVerification = documents
+      .filter(d => d.profileJson)
+      .map(d => ({ documentName: d.filename, profile: d.profileJson! }))
+
+    // Control run / legacy job with extraction but no verification: run the
+    // deterministic layer on the existing extraction and return.
+    if (job.preparerOutput) {
+      const verification = runVerification(
+        job.preparerOutput,
+        collectTextSources(job.preparerOutput, profilesForVerification),
       )
+      await saveVerification(id, verification)
+      const refreshed = await getAuditJob(id)
+      return NextResponse.json({ success: true, data: refreshed })
     }
 
     await updateAuditJobStatus(id, 'preparing')
@@ -111,6 +131,16 @@ export async function POST(
     )
 
     await savePreparerOutput(id, output as PreparerOutput)
+
+    // Workstream A: deterministic verification runs in code immediately after
+    // extraction — before any downstream agent reasons on the figures. The
+    // verified figure set + exception list are persisted with the run (Track D).
+    const verification = runVerification(
+      output as PreparerOutput,
+      collectTextSources(output as PreparerOutput, profilesForVerification),
+    )
+    await saveVerification(id, verification)
+
     const updated = await getAuditJob(id)
 
     return NextResponse.json({ success: true, data: updated })

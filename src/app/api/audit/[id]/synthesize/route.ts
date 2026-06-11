@@ -4,6 +4,7 @@ import { handleAnthropicError } from '@/lib/anthropic/errorHandler'
 import { buildSynthesizerSystemPrompt, AGENT_CONFIGS } from '@/lib/agentConfig'
 import { synthesisReportSchema } from '@/lib/zod/schemas'
 import { runAgent } from '@/lib/runAgent'
+import { runVerification, formatVerificationForPrompt } from '@/lib/validations'
 import { enforceRateLimit } from '@/lib/rateLimit'
 import type { SynthesisReport } from '@/types'
 
@@ -37,10 +38,18 @@ export async function POST(
 
     await updateAuditJobStatus(id, 'synthesizing')
 
+    // EQR provenance input (round-2 Workstream B): the Synthesizer receives the
+    // same deterministic verification the Reviewer/Challenger reasoned on, so it
+    // can enforce that every quantitative finding cites a check or vouched figure.
+    const verification = job.verification ?? (job.preparerOutput ? runVerification(job.preparerOutput) : null)
+    const deterministicBlock = verification ? formatVerificationForPrompt(verification) : ''
+
     const userMessage = `You have three prior agent outputs for this ${job.fundType} fund audit to synthesize into the final report.
 
 === PREPARER OUTPUT ===
 ${JSON.stringify(job.preparerOutput, null, 2)}
+
+${deterministicBlock}
 
 === REVIEWER OUTPUT ===
 ${JSON.stringify(job.reviewerOutput, null, 2)}
@@ -48,7 +57,7 @@ ${JSON.stringify(job.reviewerOutput, null, 2)}
 === CHALLENGER OUTPUT ===
 ${JSON.stringify(job.challengerOutput, null, 2)}
 
-Produce the final SynthesisReport JSON.`
+Apply the EQR gate and produce the final SynthesisReport JSON.`
 
     const output = await runAgent(
       AGENT_CONFIGS.synthesizer,

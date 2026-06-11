@@ -113,6 +113,53 @@ export interface Engagement {
 
 // ── Preparer output ───────────────────────────────────────────────────────────
 
+// A single itemized line on a financial statement, as displayed in the document.
+export interface StatementLineItem {
+  label: string
+  amount: number                    // as displayed; verification layer normalizes signs
+}
+
+// One section of a financial statement with its stated subtotal (round-2 C2:
+// the verification layer cannot foot what extraction does not capture).
+export interface StatementSection {
+  lineItems: StatementLineItem[]
+  statedTotal: number | null        // subtotal as printed, never computed
+}
+
+// ASC 820 fair value hierarchy disclosure for one period (round-2 C3/C6).
+export interface FairValueHierarchyPeriod {
+  periodLabel: string | null        // e.g. "Q4 2023"
+  asOfDate: string | null           // ISO date
+  level1: number | null
+  level2: number | null
+  level3: number | null
+  statedTotal: number | null                  // the note's own stated total — never derived
+  balanceSheetInvestmentsLine: number | null  // investments line on the balance-sheet face for the same period
+}
+
+// A rollforward table column as disclosed (round-2 C6).
+export interface RollforwardTable {
+  tableName: string                 // as titled in the document
+  subject: 'investments' | 'level3' | 'capital' | 'other'
+  periodLabel: string | null
+  beginningBalance: number | null
+  beginningPeriodLabel: string | null   // period the opening balance belongs to, e.g. "Q3 2023"
+  flows: StatementLineItem[]            // each flow row as displayed
+  statedEndingBalance: number | null
+  endingPeriodLabel: string | null
+}
+
+// Period flow vs. cumulative balance disclosure (round-2 C7).
+export interface PeriodCapitalActivity {
+  periodLabel: string | null
+  periodCapitalCalls: number | null
+  periodDistributions: number | null
+  cumulativeCalledBeginning: number | null
+  cumulativeCalledEnding: number | null
+  cumulativeDistributionsBeginning: number | null
+  cumulativeDistributionsEnding: number | null
+}
+
 export interface PreparerOutput {
   fundName: string
   fundType: FundType
@@ -164,6 +211,25 @@ export interface PreparerOutput {
     feesAndExpenses: number | null
     otherChanges: number | null
     endingNav: number | null
+  } | null
+  // Itemized statement sections (round-2 C2). statedTotal for operations is the
+  // "Net Increase/Decrease in Net Assets from Operations" line.
+  statementSections: {
+    assets: StatementSection | null
+    liabilities: StatementSection | null
+    operations: StatementSection | null
+  } | null
+  // One entry per period the FV hierarchy is disclosed for (round-2 C3, C6 ties)
+  fairValueHierarchy: FairValueHierarchyPeriod[]
+  // Every rollforward table in the document set (round-2 C6)
+  rollforwards: RollforwardTable[]
+  // Period flows vs. cumulative balances (round-2 C7)
+  periodCapitalActivity: PeriodCapitalActivity | null
+  // Statement of Changes endpoints, separate from balance-sheet capital (round-2 C8)
+  statementOfChanges: {
+    periodLabel: string | null
+    beginningCapital: number | null
+    endingCapital: number | null
   } | null
   valuationDisclosures: {
     independentValuationFirm: string | null   // named third-party firm, if disclosed
@@ -238,6 +304,52 @@ export interface PreparerOutput {
   sourceCitations: Record<string, SourceCitation>   // key = field path
   promptVersion: string
   modelVersion: string
+}
+
+// ── Deterministic verification layer (round-2 Workstream A) ──────────────────
+
+export type DeterministicStatus = 'pass' | 'fail' | 'unable_to_verify'
+
+// Check families per the round-2 remediation spec. LEGACY covers round-1 checks
+// that predate the C-numbering (capital structure, stated-metric recomputation).
+export type CheckFamily =
+  | 'C1'   // NAV bridge (normalized signs + sign-artifact guardrail)
+  | 'C2'   // Section footing (line items → stated subtotal)
+  | 'C3'   // FV hierarchy footing with outlier attribution
+  | 'C4'   // Balance-sheet equation
+  | 'C5'   // Capital-account rollforward (per-LP)
+  | 'C6'   // Rollforward table audit (internal foot + endpoint ties)
+  | 'C7'   // Flow-to-balance / cross-period
+  | 'C8'   // Cross-statement consistency
+  | 'C9'   // Date sequencing
+  | 'C10'  // Typo / OCR-quality pass
+  | 'LEGACY'
+
+export interface DeterministicCheck {
+  id: string                        // D-001, D-002, ... (stable per run)
+  family: CheckFamily
+  check: string
+  expected: string                  // formula with substituted values
+  found: string
+  variance: string | null           // signed difference + percentage when computable
+  status: DeterministicStatus
+  // Guardrail demotion signal: when set, agents must not escalate above this.
+  severityCeiling: 'critical' | 'warning' | 'informational' | null
+  note: string | null               // interpretation guidance for the agents
+}
+
+// A figure confirmed by at least one passing deterministic check. Downstream
+// agents reason on these — never on raw extraction.
+export interface VerifiedFigure {
+  label: string
+  value: number
+  verifiedBy: string[]              // deterministic check IDs
+}
+
+export interface VerificationResult {
+  checks: DeterministicCheck[]
+  verifiedFigureSet: VerifiedFigure[]
+  exceptionList: DeterministicCheck[]   // checks with status 'fail'
 }
 
 // ── Findings ──────────────────────────────────────────────────────────────────
@@ -374,7 +486,13 @@ export interface AuditJob {
   fundType: FundType
   auditScope: AuditScope
   documentIds: string[]
+  // Control-run mode (Track C): when true, preparerOutput was injected as a
+  // known-good extraction and the Preparer LLM was bypassed.
+  controlRun: boolean
   preparerOutput: PreparerOutput | null
+  // Deterministic verification computed in code from the extraction (Workstream A).
+  // Persisted alongside the run for regression diffing (Track D).
+  verification: VerificationResult | null
   reviewerOutput: ReviewerOutput | null
   challengerOutput: ChallengerOutput | null
   finalReport: SynthesisReport | null
