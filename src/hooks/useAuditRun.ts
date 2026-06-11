@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { AuditScope, Engagement, FundDocument, AuditJob, FundType, FindingStatus, FindingStatusRecord, PreparerOutput } from '@/types'
 
 export type PhaseStatus = 'idle' | 'running' | 'done' | 'error'
 export type AppView = 'engagement' | 'library' | 'setup' | 'pipeline' | 'report'
+
+const APP_VIEWS: readonly AppView[] = ['engagement', 'library', 'setup', 'pipeline', 'report']
 export type UploadStage = 'uploading' | 'profiling' | 'done' | 'error'
 
 export interface PipelinePhases {
@@ -37,6 +40,7 @@ export interface AuditRunHook {
 
   createEngagement:  (name: string, fundName: string, fundType: FundType, description?: string) => Promise<void>
   selectEngagement:  (e: Engagement) => void
+  openLatestRun:     (e: Engagement) => Promise<void>
   uploadDocument:    (file: File) => Promise<void>
   profileDocument:   (docId: string) => Promise<void>
   deleteDocument:    (docId: string) => Promise<void>
@@ -89,6 +93,8 @@ function jsonPost<T>(url: string, body?: unknown): Promise<T> {
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useAuditRun(): AuditRunHook {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [view,              setViewState]      = useState<AppView>('engagement')
   const [engagements,       setEngagements]    = useState<Engagement[]>([])
   const [currentEngagement, setCurrentEngagement] = useState<Engagement | null>(null)
@@ -105,6 +111,75 @@ export function useAuditRun(): AuditRunHook {
   const [awaitingExtractionReview, setAwaitingExtractionReview] = useState(false)
   // Job id whose downstream phases are deferred pending extraction review
   const pausedJobIdRef = useRef<string | null>(null)
+
+  // Refs mirror navigation-relevant state so the URL-restore effect can read
+  // current values without re-subscribing on every state change (which would
+  // re-fire on its own router.push). This effect must stay declared before the
+  // URL-restore effect so the mirrors are fresh when it runs.
+  const viewRef        = useRef(view)
+  const engRef         = useRef(currentEngagement)
+  const jobRef         = useRef(currentJob)
+  const engagementsRef = useRef(engagements)
+  useEffect(() => {
+    viewRef.current        = view
+    engRef.current         = currentEngagement
+    jobRef.current         = currentJob
+    engagementsRef.current = engagements
+  })
+
+  // ── Track E: URL-synced client-side navigation ──────────────────────────────
+  // View + engagement live in the query string so browser back/forward and deep
+  // links work without a hard refresh. Actions push; the effect below pulls.
+  const pushUrl = useCallback((v: AppView, engagementId: string | null) => {
+    const params = new URLSearchParams()
+    if (v !== 'engagement') params.set('view', v)
+    if (engagementId)       params.set('eng', engagementId)
+    const qs = params.toString()
+    router.push(qs ? `?${qs}` : '/', { scroll: false })
+  }, [router])
+
+  useEffect(() => {
+    if (isLoading) return   // engagement list not loaded yet
+    const rawView  = searchParams.get('view')
+    const urlView  = rawView && (APP_VIEWS as readonly string[]).includes(rawView)
+      ? rawView as AppView : 'engagement'
+    const urlEngId = searchParams.get('eng')
+
+    if (urlEngId !== (engRef.current?.id ?? null)) {
+      const engagement = urlEngId
+        ? engagementsRef.current.find(e => e.id === urlEngId) ?? null
+        : null
+      setCurrentEngagement(engagement)
+      setSelectedDocIds(new Set())   // selection must not carry across engagements
+      if (!engagement) {
+        if (viewRef.current !== 'engagement') setViewState('engagement')
+        return
+      }
+    }
+    if (urlView === viewRef.current) return
+
+    // Report and pipeline need a job in memory. On a deep link or refresh,
+    // recover the report from the latest persisted run (Track D); pipeline
+    // runs are client-driven and cannot be re-attached, so land on the library.
+    if (urlView === 'report' && !jobRef.current?.finalReport && urlEngId) {
+      ;(async () => {
+        const job = await apiFetch<AuditJob | null>(`/api/audit/latest?engagementId=${urlEngId}`).catch(() => null)
+        if (job?.finalReport) {
+          setCurrentJob(job)
+          setPhases({ prepare: 'done', review: 'done', challenge: 'done', synthesize: 'done' })
+          setViewState('report')
+        } else {
+          setViewState('library')
+        }
+      })()
+      return
+    }
+    if (urlView === 'pipeline' && !jobRef.current) {
+      setViewState('library')
+      return
+    }
+    setViewState(urlView)
+  }, [searchParams, isLoading])
 
   // ── Initial data load ───────────────────────────────────────────────────────
   // Documents are scoped per engagement and loaded on engagement selection.
@@ -165,7 +240,10 @@ export function useAuditRun(): AuditRunHook {
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
-  const setView      = useCallback((v: AppView) => setViewState(v), [])
+  const setView = useCallback((v: AppView) => {
+    setViewState(v)
+    pushUrl(v, engRef.current?.id ?? null)
+  }, [pushUrl])
   const clearError   = useCallback(() => setError(null), [])
   const resetForNewRun = useCallback(() => {
     setCurrentJob(null)
@@ -174,7 +252,8 @@ export function useAuditRun(): AuditRunHook {
     setAwaitingExtractionReview(false)
     pausedJobIdRef.current = null
     setViewState('setup')
-  }, [])
+    pushUrl('setup', engRef.current?.id ?? null)
+  }, [pushUrl])
 
   const updateFindingStatus = useCallback(async (
     findingId: string, status: FindingStatus, note?: string | null
@@ -201,16 +280,45 @@ export function useAuditRun(): AuditRunHook {
       setEngagements(prev => [engagement, ...prev])
       setCurrentEngagement(engagement)
       setViewState('library')
+      pushUrl('library', engagement.id)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create engagement.')
     }
-  }, [])
+  }, [pushUrl])
 
   const selectEngagement = useCallback((engagement: Engagement) => {
     setCurrentEngagement(engagement)
     setSelectedDocIds(new Set())   // selection must not carry across engagements
     setViewState('library')
-  }, [])
+    pushUrl('library', engagement.id)
+  }, [pushUrl])
+
+  // Track D surfacing: jump straight to an engagement's most recent persisted
+  // run without re-running the pipeline.
+  const openLatestRun = useCallback(async (engagement: Engagement) => {
+    setCurrentEngagement(engagement)
+    setSelectedDocIds(new Set())
+    try {
+      const job = await apiFetch<AuditJob | null>(`/api/audit/latest?engagementId=${engagement.id}`)
+      if (job?.finalReport) {
+        setCurrentJob(job)
+        setPhases({ prepare: 'done', review: 'done', challenge: 'done', synthesize: 'done' })
+        setViewState('report')
+        pushUrl('report', engagement.id)
+        return
+      }
+      if (job) setCurrentJob(job)
+      setError(job
+        ? 'The latest run for this engagement did not complete — start a new run.'
+        : 'No runs for this engagement yet.')
+      setViewState('library')
+      pushUrl('library', engagement.id)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load the latest run.')
+      setViewState('library')
+      pushUrl('library', engagement.id)
+    }
+  }, [pushUrl])
 
   const uploadDocument = useCallback(async (file: File) => {
     if (!currentEngagement) {
@@ -315,7 +423,8 @@ export function useAuditRun(): AuditRunHook {
     setPhases(p => ({ ...p, synthesize: 'done' }))
     setCurrentJob(finalJob)
     setViewState('report')
-  }, [])
+    pushUrl('report', engRef.current?.id ?? null)
+  }, [pushUrl])
 
   const startAudit = useCallback(async (
     docIds: string[], fundType: FundType, auditScope: AuditScope, options?: StartAuditOptions,
@@ -337,6 +446,7 @@ export function useAuditRun(): AuditRunHook {
       })
       setCurrentJob(job)
       setViewState('pipeline')
+      pushUrl('pipeline', currentEngagement.id)
 
       // Phase 1: Prepare (extraction + deterministic verification in code).
       // Control runs skip the LLM server-side and only verify.
@@ -361,7 +471,7 @@ export function useAuditRun(): AuditRunHook {
         if (refreshed) setCurrentJob(refreshed)
       }
     }
-  }, [currentEngagement, runDownstreamPhases])
+  }, [currentEngagement, runDownstreamPhases, pushUrl])
 
   const continueAfterExtractionReview = useCallback(async () => {
     const jobId = pausedJobIdRef.current
@@ -381,7 +491,7 @@ export function useAuditRun(): AuditRunHook {
     view, engagements, currentEngagement, documents,
     selectedDocIds, currentJob, phases, uploadProgress, findingStatuses, isLoading, error,
     awaitingExtractionReview,
-    createEngagement, selectEngagement, uploadDocument, profileDocument, deleteDocument,
+    createEngagement, selectEngagement, openLatestRun, uploadDocument, profileDocument, deleteDocument,
     toggleDocSelection, selectAllProfiled, clearSelection, startAudit,
     continueAfterExtractionReview, updateFindingStatus,
     setView, clearError, resetForNewRun,

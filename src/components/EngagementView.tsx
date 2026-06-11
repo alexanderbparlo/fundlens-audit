@@ -7,8 +7,8 @@ import { FUND_TYPE_LABELS } from '@/lib/utils'
 
 const FUND_TYPES = Object.entries(FUND_TYPE_LABELS) as [FundType, string][]
 
-export function EngagementView({ engagements, createEngagement, selectEngagement }: Pick<
-  AuditRunHook, 'engagements' | 'createEngagement' | 'selectEngagement'
+export function EngagementView({ engagements, createEngagement, selectEngagement, openLatestRun }: Pick<
+  AuditRunHook, 'engagements' | 'createEngagement' | 'selectEngagement' | 'openLatestRun'
 >) {
   const [name,        setName]        = useState('')
   const [fundName,    setFundName]    = useState('')
@@ -45,24 +45,38 @@ export function EngagementView({ engagements, createEngagement, selectEngagement
             </p>
             <div className="space-y-2">
               {engagements.map(e => (
-                <button
+                <div
                   key={e.id}
-                  onClick={() => selectEngagement(e)}
-                  className="w-full flex items-center justify-between rounded-xl bg-surface-800 border border-border px-5 py-4 text-left hover:bg-surface-700 hover:border-accent/30 transition-colors group"
+                  className="w-full flex items-stretch rounded-xl bg-surface-800 border border-border hover:border-accent/30 transition-colors overflow-hidden"
                 >
-                  <div>
-                    <p className="text-primary font-medium group-hover:text-accent transition-colors">
-                      {e.name}
-                    </p>
-                    <p className="text-secondary text-sm mt-0.5">
-                      {e.fundName} &middot; {FUND_TYPE_LABELS[e.fundType]}
-                      {e.documentIds.length > 0 && ` · ${e.documentIds.length} doc${e.documentIds.length !== 1 ? 's' : ''}`}
-                    </p>
-                  </div>
-                  <svg className="w-4 h-4 text-muted group-hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
+                  <button
+                    onClick={() => selectEngagement(e)}
+                    className="flex-1 flex items-center justify-between px-5 py-4 text-left hover:bg-surface-700 transition-colors group"
+                  >
+                    <div>
+                      <p className="text-primary font-medium group-hover:text-accent transition-colors">
+                        {e.name}
+                      </p>
+                      <p className="text-secondary text-sm mt-0.5">
+                        {e.fundName} &middot; {FUND_TYPE_LABELS[e.fundType]}
+                        {e.documentIds.length > 0 && ` · ${e.documentIds.length} doc${e.documentIds.length !== 1 ? 's' : ''}`}
+                        {e.auditJobIds.length > 0 && ` · ${e.auditJobIds.length} run${e.auditJobIds.length !== 1 ? 's' : ''}`}
+                      </p>
+                    </div>
+                    <svg className="w-4 h-4 text-muted group-hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                  {/* Track D surfacing: open the most recent persisted run directly */}
+                  {e.auditJobIds.length > 0 && (
+                    <button
+                      onClick={() => openLatestRun(e)}
+                      className="shrink-0 border-l border-border px-4 text-xs font-display uppercase tracking-wider text-secondary hover:text-accent hover:bg-surface-700 transition-colors"
+                    >
+                      Latest report
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
             <div className="relative my-8">

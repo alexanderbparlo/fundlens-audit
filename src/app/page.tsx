@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useAuditRun } from '@/hooks/useAuditRun'
 import { EngagementView } from '@/components/EngagementView'
 import { LibraryView }    from '@/components/LibraryView'
@@ -7,18 +8,32 @@ import { SetupView }      from '@/components/SetupView'
 import { PipelineView }   from '@/components/PipelineView'
 import { ReportView }     from '@/components/ReportView'
 
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-surface-950">
+      <div className="flex items-center gap-3 text-secondary">
+        <div className="w-4 h-4 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+        <span className="text-sm font-display">Loading...</span>
+      </div>
+    </div>
+  )
+}
+
+// useAuditRun reads the URL via useSearchParams (Track E), which requires a
+// Suspense boundary above it for prerendering.
 export default function Home() {
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <AuditApp />
+    </Suspense>
+  )
+}
+
+function AuditApp() {
   const run = useAuditRun()
 
   if (run.isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-surface-950">
-        <div className="flex items-center gap-3 text-secondary">
-          <div className="w-4 h-4 rounded-full border-2 border-accent border-t-transparent animate-spin" />
-          <span className="text-sm font-display">Loading...</span>
-        </div>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   return (
@@ -27,14 +42,23 @@ export default function Home() {
       {run.view !== 'engagement' && (
         <header className="sticky top-0 z-50 border-b border-border bg-surface-950/90 backdrop-blur-sm">
           <div className="max-w-4xl mx-auto px-6 h-14 flex items-center gap-3">
-            <span className="font-display font-semibold text-primary">FundLens</span>
-            <span className="text-accent font-display font-semibold">Audit</span>
+            {/* Persistent home control + breadcrumb (Track E) */}
+            <button
+              onClick={() => run.setView('engagement')}
+              className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+            >
+              <span className="font-display font-semibold text-primary">FundLens</span>
+              <span className="text-accent font-display font-semibold">Audit</span>
+            </button>
             {run.currentEngagement && (
               <>
                 <span className="text-border select-none">·</span>
-                <span className="text-secondary text-sm truncate max-w-xs">
+                <button
+                  onClick={() => run.setView('library')}
+                  className="text-secondary text-sm truncate max-w-xs hover:text-primary transition-colors text-left"
+                >
                   {run.currentEngagement.name}
-                </span>
+                </button>
               </>
             )}
           </div>
@@ -61,6 +85,7 @@ export default function Home() {
           engagements={run.engagements}
           createEngagement={run.createEngagement}
           selectEngagement={run.selectEngagement}
+          openLatestRun={run.openLatestRun}
         />
       )}
 

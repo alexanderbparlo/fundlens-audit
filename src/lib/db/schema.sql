@@ -67,7 +67,9 @@ CREATE TABLE IF NOT EXISTS audit_jobs (
   audit_scope         TEXT        NOT NULL DEFAULT 'full',
   -- audit_scope enum: full | partial
   document_ids        UUID[]      NOT NULL DEFAULT '{}',
+  control_run         BOOLEAN     NOT NULL DEFAULT FALSE,  -- Track C: profiler-bypass control run
   preparer_output     JSONB,
+  verification        JSONB,                               -- Track D: deterministic verification snapshot (C1–C10)
   reviewer_output     JSONB,
   challenger_output   JSONB,
   final_report        JSONB,
@@ -81,6 +83,11 @@ CREATE TABLE IF NOT EXISTS audit_jobs (
 -- Migration: add audit_scope to existing tables
 -- Run this if upgrading from a schema version before 1.1.0:
 -- ALTER TABLE audit_jobs ADD COLUMN IF NOT EXISTS audit_scope TEXT NOT NULL DEFAULT 'full';
+
+-- Migration: add Round-2 columns (verification snapshot + control-run flag)
+-- Run this if upgrading from a schema version before 1.3.0:
+-- ALTER TABLE audit_jobs ADD COLUMN IF NOT EXISTS control_run BOOLEAN NOT NULL DEFAULT FALSE;
+-- ALTER TABLE audit_jobs ADD COLUMN IF NOT EXISTS verification JSONB;
 
 CREATE INDEX IF NOT EXISTS idx_audit_jobs_engagement ON audit_jobs (engagement_id);
 CREATE INDEX IF NOT EXISTS idx_audit_jobs_status ON audit_jobs (status);
