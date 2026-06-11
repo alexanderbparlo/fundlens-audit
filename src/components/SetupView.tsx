@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { AuditRunHook } from '@/hooks/useAuditRun'
-import type { AuditScope, FundType } from '@/types'
+import type { AuditScope, FundType, PreparerOutput } from '@/types'
 import { FUND_TYPE_LABELS } from '@/lib/utils'
 
 const FUND_TYPES = Object.entries(FUND_TYPE_LABELS) as [FundType, string][]
@@ -19,6 +19,11 @@ export function SetupView({
   const [fundType,   setFundType]   = useState<FundType>(currentEngagement?.fundType ?? 'PE')
   const [auditScope, setAuditScope] = useState<AuditScope>('full')
   const [submitting, setSubmitting] = useState(false)
+  // Track C extraction controls
+  const [reviewExtraction, setReviewExtraction] = useState(false)
+  const [controlExtraction, setControlExtraction] = useState<{ name: string; data: PreparerOutput } | null>(null)
+  const [controlError, setControlError] = useState<string | null>(null)
+  const controlFileRef = useRef<HTMLInputElement>(null)
 
   // Pre-select all profiled docs on mount
   useEffect(() => { selectAllProfiled() }, [selectAllProfiled])
@@ -35,8 +40,28 @@ export function SetupView({
   async function handleRun() {
     if (!canRun) return
     setSubmitting(true)
-    await startAudit(selectionArray, fundType, auditScope)
+    await startAudit(selectionArray, fundType, auditScope, {
+      reviewExtraction,
+      controlPreparerOutput: controlExtraction?.data ?? null,
+    })
     setSubmitting(false)
+  }
+
+  async function handleControlFile(files: FileList | null) {
+    setControlError(null)
+    const file = files?.[0]
+    if (!file) return
+    try {
+      const parsed = JSON.parse(await file.text()) as PreparerOutput
+      // Full schema validation happens server-side; catch the obvious here.
+      if (typeof parsed !== 'object' || parsed === null || !('fundName' in parsed)) {
+        throw new Error('File does not look like a PreparerOutput JSON.')
+      }
+      setControlExtraction({ name: file.name, data: parsed })
+    } catch (err) {
+      setControlExtraction(null)
+      setControlError(err instanceof Error ? err.message : 'Invalid JSON file.')
+    }
   }
 
   return (
@@ -153,6 +178,62 @@ export function SetupView({
             })}
           </div>
         )}
+      </div>
+
+      {/* Extraction controls (Track C) */}
+      <div className="rounded-2xl bg-surface-900 border border-border p-6 space-y-4">
+        <p className="text-xs uppercase tracking-widest text-label font-display">Extraction Controls</p>
+
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={reviewExtraction}
+            onChange={e => setReviewExtraction(e.target.checked)}
+            className="accent-accent w-4 h-4 mt-0.5"
+          />
+          <span>
+            <span className="text-primary text-sm block">Review extraction before agents run</span>
+            <span className="text-secondary text-xs block mt-0.5">
+              Pauses after deterministic verification so you can tie out the verified figure set and exceptions before any agent reasons on them.
+            </span>
+          </span>
+        </label>
+
+        <div className="border-t border-border pt-4 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-primary text-sm">Control run — known-good extraction</p>
+              <p className="text-secondary text-xs mt-0.5">
+                Bypasses the profiler and Preparer: agents reason on a structured extraction you provide (PreparerOutput JSON). Isolates agent quality from profiler quality.
+              </p>
+            </div>
+            <button
+              onClick={() => controlFileRef.current?.click()}
+              className="shrink-0 text-xs rounded-lg px-3 py-1.5 bg-surface-800 text-secondary hover:text-accent border border-border hover:border-accent/30 transition-colors"
+            >
+              {controlExtraction ? 'Replace JSON' : 'Load JSON'}
+            </button>
+            <input
+              ref={controlFileRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={e => handleControlFile(e.target.files)}
+            />
+          </div>
+          {controlExtraction && (
+            <div className="flex items-center justify-between rounded-lg bg-accent/10 border border-accent/30 px-3 py-2">
+              <p className="text-accent text-xs font-mono truncate">{controlExtraction.name}</p>
+              <button
+                onClick={() => setControlExtraction(null)}
+                className="text-xs text-secondary hover:text-negative shrink-0 ml-3 transition-colors"
+              >
+                Remove
+              </button>
+            </div>
+          )}
+          {controlError && <p className="text-negative text-xs">{controlError}</p>}
+        </div>
       </div>
 
       {/* Run button */}

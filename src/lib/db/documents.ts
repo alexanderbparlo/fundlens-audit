@@ -73,6 +73,14 @@ export async function findDocumentsByIds(ids: string[]): Promise<FundDocument[]>
   return (rows as Record<string, unknown>[]).map(rowToDocument)
 }
 
+// Track C: remove & re-upload per audit-support document — a bad extraction
+// must not force an engagement restart. Returns the deleted row so the caller
+// can clean up the blob.
+export async function deleteDocument(id: string): Promise<FundDocument | null> {
+  const rows = await sql`DELETE FROM documents WHERE id = ${id} RETURNING *`
+  return rows[0] ? rowToDocument(rows[0] as Record<string, unknown>) : null
+}
+
 export async function listDocuments(engagementId: string): Promise<FundDocument[]> {
   const rows = await sql`
     SELECT * FROM documents

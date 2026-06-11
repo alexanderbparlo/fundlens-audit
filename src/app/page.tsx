@@ -70,6 +70,7 @@ export default function Home() {
           uploadProgress={run.uploadProgress}
           uploadDocument={run.uploadDocument}
           profileDocument={run.profileDocument}
+          deleteDocument={run.deleteDocument}
           currentEngagement={run.currentEngagement}
           setView={run.setView}
         />
@@ -95,6 +96,8 @@ export default function Home() {
           currentJob={run.currentJob}
           setView={run.setView}
           resetForNewRun={run.resetForNewRun}
+          awaitingExtractionReview={run.awaitingExtractionReview}
+          continueAfterExtractionReview={run.continueAfterExtractionReview}
         />
       )}
 

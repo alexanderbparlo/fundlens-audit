@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getEngagement, addAuditJobToEngagement } from '@/lib/db/engagements'
 import { findDocumentsByIds } from '@/lib/db/documents'
-import { createAuditJob } from '@/lib/db/auditJobs'
+import { createAuditJob, savePreparerOutput } from '@/lib/db/auditJobs'
+import { preparerOutputSchema } from '@/lib/zod/schemas'
 import { enforceRateLimit } from '@/lib/rateLimit'
-import type { AuditScope, FundType } from '@/types'
+import type { AuditScope, FundType, PreparerOutput } from '@/types'
 
 export const maxDuration = 30
 
@@ -12,7 +13,23 @@ export async function POST(req: NextRequest) {
   if (limited) return limited
   try {
     const body = await req.json() as Record<string, unknown>
-    const { engagementId, documentIds, fundType, auditScope } = body
+    const { engagementId, documentIds, fundType, auditScope, controlPreparerOutput } = body
+
+    // Track C control-run mode: a known-good structured extraction bypasses the
+    // profiler/preparer entirely, isolating agent reasoning from profiler quality.
+    let controlExtraction: PreparerOutput | null = null
+    if (controlPreparerOutput != null) {
+      const parsed = preparerOutputSchema.safeParse(controlPreparerOutput)
+      if (!parsed.success) {
+        const issues = parsed.error.issues.slice(0, 5)
+          .map(i => `${i.path.map(String).join('.')}: ${i.message}`).join('; ')
+        return NextResponse.json(
+          { success: false, error: `controlPreparerOutput failed schema validation: ${issues}` },
+          { status: 400 }
+        )
+      }
+      controlExtraction = parsed.data as PreparerOutput
+    }
 
     if (typeof engagementId !== 'string' || !engagementId) {
       return NextResponse.json({ success: false, error: 'engagementId is required.' }, { status: 400 })
@@ -59,7 +76,14 @@ export async function POST(req: NextRequest) {
       fundType: fundType as FundType,
       auditScope: resolvedScope,
       documentIds: documentIds as string[],
+      controlRun: controlExtraction != null,
     })
+
+    if (controlExtraction) {
+      // The prepare route detects an existing extraction, skips the LLM, and
+      // runs only the deterministic verification layer over it.
+      await savePreparerOutput(job.id, controlExtraction)
+    }
 
     await addAuditJobToEngagement(engagementId, job.id)
 

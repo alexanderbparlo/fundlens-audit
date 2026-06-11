@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
-import type { AuditScope, Engagement, FundDocument, AuditJob, FundType, FindingStatus, FindingStatusRecord } from '@/types'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import type { AuditScope, Engagement, FundDocument, AuditJob, FundType, FindingStatus, FindingStatusRecord, PreparerOutput } from '@/types'
 
 export type PhaseStatus = 'idle' | 'running' | 'done' | 'error'
 export type AppView = 'engagement' | 'library' | 'setup' | 'pipeline' | 'report'
@@ -12,6 +12,13 @@ export interface PipelinePhases {
   review:    PhaseStatus
   challenge: PhaseStatus
   synthesize: PhaseStatus
+}
+
+// Track C run options: pause for extraction review before the agents reason,
+// or inject a known-good extraction (control run, profiler bypass).
+export interface StartAuditOptions {
+  reviewExtraction?: boolean
+  controlPreparerOutput?: PreparerOutput | null
 }
 
 export interface AuditRunHook {
@@ -26,15 +33,18 @@ export interface AuditRunHook {
   findingStatuses:    Record<string, FindingStatus>
   isLoading:          boolean
   error:              string | null
+  awaitingExtractionReview: boolean
 
   createEngagement:  (name: string, fundName: string, fundType: FundType, description?: string) => Promise<void>
   selectEngagement:  (e: Engagement) => void
   uploadDocument:    (file: File) => Promise<void>
   profileDocument:   (docId: string) => Promise<void>
+  deleteDocument:    (docId: string) => Promise<void>
   toggleDocSelection: (docId: string) => void
   selectAllProfiled: () => void
   clearSelection:    () => void
-  startAudit:        (docIds: string[], fundType: FundType, auditScope: AuditScope) => Promise<void>
+  startAudit:        (docIds: string[], fundType: FundType, auditScope: AuditScope, options?: StartAuditOptions) => Promise<void>
+  continueAfterExtractionReview: () => Promise<void>
   updateFindingStatus: (findingId: string, status: FindingStatus, note?: string | null) => Promise<void>
   setView:           (v: AppView) => void
   clearError:        () => void
@@ -92,6 +102,9 @@ export function useAuditRun(): AuditRunHook {
   const [findingStatuses, setFindingStatuses] = useState<Record<string, FindingStatus>>({})
   const [isLoading,      setIsLoading]      = useState(true)
   const [error,          setError]          = useState<string | null>(null)
+  const [awaitingExtractionReview, setAwaitingExtractionReview] = useState(false)
+  // Job id whose downstream phases are deferred pending extraction review
+  const pausedJobIdRef = useRef<string | null>(null)
 
   // ── Initial data load ───────────────────────────────────────────────────────
   // Documents are scoped per engagement and loaded on engagement selection.
@@ -158,6 +171,8 @@ export function useAuditRun(): AuditRunHook {
     setCurrentJob(null)
     setFindingStatuses({})
     setPhases({ prepare: 'idle', review: 'idle', challenge: 'idle', synthesize: 'idle' })
+    setAwaitingExtractionReview(false)
+    pausedJobIdRef.current = null
     setViewState('setup')
   }, [])
 
@@ -237,6 +252,23 @@ export function useAuditRun(): AuditRunHook {
     }
   }, [])
 
+  // Track C: remove a document (e.g. after a bad extraction) so it can be
+  // re-uploaded without restarting the engagement.
+  const deleteDocument = useCallback(async (docId: string) => {
+    try {
+      await apiFetch<{ id: string }>(`/api/documents/${docId}`, { method: 'DELETE' })
+      setDocuments(prev => prev.filter(d => d.id !== docId))
+      setSelectedDocIds(prev => {
+        if (!prev.has(docId)) return prev
+        const next = new Set(prev)
+        next.delete(docId)
+        return next
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete document.')
+    }
+  }, [])
+
   const toggleDocSelection = useCallback((docId: string) => {
     setSelectedDocIds(prev => {
       const next = new Set(prev)
@@ -255,9 +287,43 @@ export function useAuditRun(): AuditRunHook {
 
   const clearSelection = useCallback(() => setSelectedDocIds(new Set()), [])
 
-  const startAudit = useCallback(async (docIds: string[], fundType: FundType, auditScope: AuditScope) => {
+  // Review + Challenge in parallel, then Synthesize. Shared by the straight-through
+  // run and the resume-after-extraction-review path (Track C).
+  const runDownstreamPhases = useCallback(async (jobId: string) => {
+    setPhases(p => ({ ...p, review: 'running', challenge: 'running' }))
+    const [reviewResult, challengeResult] = await Promise.allSettled([
+      jsonPost(`/api/audit/${jobId}/review`),
+      jsonPost(`/api/audit/${jobId}/challenge`),
+    ])
+    const reviewFailed    = reviewResult.status === 'rejected'
+    const challengeFailed = challengeResult.status === 'rejected'
+    setPhases(p => ({
+      ...p,
+      review:    reviewFailed    ? 'error' : 'done',
+      challenge: challengeFailed ? 'error' : 'done',
+    }))
+    if (reviewFailed || challengeFailed) {
+      const msgs = [
+        reviewFailed    ? `Review: ${(reviewResult    as PromiseRejectedResult).reason?.message}` : null,
+        challengeFailed ? `Challenge: ${(challengeResult as PromiseRejectedResult).reason?.message}` : null,
+      ].filter(Boolean)
+      throw new Error(msgs.join('; '))
+    }
+
+    setPhases(p => ({ ...p, synthesize: 'running' }))
+    const finalJob = await jsonPost<AuditJob>(`/api/audit/${jobId}/synthesize`)
+    setPhases(p => ({ ...p, synthesize: 'done' }))
+    setCurrentJob(finalJob)
+    setViewState('report')
+  }, [])
+
+  const startAudit = useCallback(async (
+    docIds: string[], fundType: FundType, auditScope: AuditScope, options?: StartAuditOptions,
+  ) => {
     if (!currentEngagement) return
     setError(null)
+    setAwaitingExtractionReview(false)
+    pausedJobIdRef.current = null
     setPhases({ prepare: 'idle', review: 'idle', challenge: 'idle', synthesize: 'idle' })
 
     let job: AuditJob | null = null
@@ -267,43 +333,27 @@ export function useAuditRun(): AuditRunHook {
         documentIds: docIds,
         fundType,
         auditScope,
+        controlPreparerOutput: options?.controlPreparerOutput ?? undefined,
       })
       setCurrentJob(job)
       setViewState('pipeline')
 
-      // Phase 1: Prepare
+      // Phase 1: Prepare (extraction + deterministic verification in code).
+      // Control runs skip the LLM server-side and only verify.
       setPhases(p => ({ ...p, prepare: 'running' }))
-      await jsonPost(`/api/audit/${job.id}/prepare`)
+      const prepared = await jsonPost<AuditJob>(`/api/audit/${job.id}/prepare`)
       setPhases(p => ({ ...p, prepare: 'done' }))
+      setCurrentJob(prepared)
 
-      // Phase 2: Review + Challenge in parallel
-      setPhases(p => ({ ...p, review: 'running', challenge: 'running' }))
-      const [reviewResult, challengeResult] = await Promise.allSettled([
-        jsonPost(`/api/audit/${job.id}/review`),
-        jsonPost(`/api/audit/${job.id}/challenge`),
-      ])
-      const reviewFailed    = reviewResult.status === 'rejected'
-      const challengeFailed = challengeResult.status === 'rejected'
-      setPhases(p => ({
-        ...p,
-        review:    reviewFailed    ? 'error' : 'done',
-        challenge: challengeFailed ? 'error' : 'done',
-      }))
-      if (reviewFailed || challengeFailed) {
-        const msgs = [
-          reviewFailed    ? `Review: ${(reviewResult    as PromiseRejectedResult).reason?.message}` : null,
-          challengeFailed ? `Challenge: ${(challengeResult as PromiseRejectedResult).reason?.message}` : null,
-        ].filter(Boolean)
-        throw new Error(msgs.join('; '))
+      // Track C: pause here so the user can tie out the verified figure set
+      // before any agent reasons on it (audit analog: tie out the lead schedule).
+      if (options?.reviewExtraction) {
+        pausedJobIdRef.current = job.id
+        setAwaitingExtractionReview(true)
+        return
       }
 
-      // Phase 3: Synthesize
-      setPhases(p => ({ ...p, synthesize: 'running' }))
-      const finalJob = await jsonPost<AuditJob>(`/api/audit/${job.id}/synthesize`)
-      setPhases(p => ({ ...p, synthesize: 'done' }))
-      setCurrentJob(finalJob)
-      setViewState('report')
-
+      await runDownstreamPhases(job.id)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Audit failed.')
       if (job) {
@@ -311,13 +361,29 @@ export function useAuditRun(): AuditRunHook {
         if (refreshed) setCurrentJob(refreshed)
       }
     }
-  }, [currentEngagement])
+  }, [currentEngagement, runDownstreamPhases])
+
+  const continueAfterExtractionReview = useCallback(async () => {
+    const jobId = pausedJobIdRef.current
+    if (!jobId) return
+    setAwaitingExtractionReview(false)
+    pausedJobIdRef.current = null
+    try {
+      await runDownstreamPhases(jobId)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Audit failed.')
+      const refreshed = await apiFetch<AuditJob>(`/api/audit/status/${jobId}`).catch(() => null)
+      if (refreshed) setCurrentJob(refreshed)
+    }
+  }, [runDownstreamPhases])
 
   return {
     view, engagements, currentEngagement, documents,
     selectedDocIds, currentJob, phases, uploadProgress, findingStatuses, isLoading, error,
-    createEngagement, selectEngagement, uploadDocument, profileDocument,
-    toggleDocSelection, selectAllProfiled, clearSelection, startAudit, updateFindingStatus,
+    awaitingExtractionReview,
+    createEngagement, selectEngagement, uploadDocument, profileDocument, deleteDocument,
+    toggleDocSelection, selectAllProfiled, clearSelection, startAudit,
+    continueAfterExtractionReview, updateFindingStatus,
     setView, clearError, resetForNewRun,
   }
 }

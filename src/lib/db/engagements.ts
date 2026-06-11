@@ -57,3 +57,12 @@ export async function addAuditJobToEngagement(id: string, jobId: string): Promis
     WHERE id = ${id}
   `
 }
+
+// Removes a document from the engagement's document_ids array (Track C delete)
+export async function removeDocumentFromEngagement(id: string, documentId: string): Promise<void> {
+  await sql`
+    UPDATE engagements
+    SET document_ids = array_remove(document_ids, ${documentId}::uuid)
+    WHERE id = ${id}
+  `
+}

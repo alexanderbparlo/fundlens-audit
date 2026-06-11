@@ -13,10 +13,11 @@ const ACCEPTED = [
 const MAX_MB   = 10
 
 function DocCard({
-  doc, onProfile,
+  doc, onProfile, onDelete,
 }: {
   doc: FundDocument
   onProfile: (id: string) => void
+  onDelete: (id: string) => void
 }) {
   const isProfiled = !!doc.profileJson
   const sizeMB     = (doc.fileSizeBytes / 1024 / 1024).toFixed(1)
@@ -71,6 +72,18 @@ function DocCard({
             Profile
           </button>
         )}
+        {/* Track C: remove & re-upload — a bad extraction must not force an engagement restart */}
+        <button
+          onClick={() => {
+            if (window.confirm(`Remove "${doc.filename}"? Past audit runs keep their snapshots; you can re-upload a corrected file.`)) {
+              onDelete(doc.id)
+            }
+          }}
+          title="Remove document (re-upload supported)"
+          className="text-xs rounded-lg px-2.5 py-1.5 text-secondary hover:text-negative border border-border hover:border-negative/30 transition-colors"
+        >
+          Remove
+        </button>
       </div>
     </div>
   )
@@ -107,9 +120,9 @@ function UploadProgress({ progress }: { progress: Record<string, string> }) {
 }
 
 export function LibraryView({
-  documents, uploadProgress, uploadDocument, profileDocument,
+  documents, uploadProgress, uploadDocument, profileDocument, deleteDocument,
   currentEngagement, setView,
-}: Pick<AuditRunHook, 'documents' | 'uploadProgress' | 'uploadDocument' | 'profileDocument' | 'currentEngagement' | 'setView'>) {
+}: Pick<AuditRunHook, 'documents' | 'uploadProgress' | 'uploadDocument' | 'profileDocument' | 'deleteDocument' | 'currentEngagement' | 'setView'>) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFiles = useCallback(async (files: FileList | null) => {
@@ -186,7 +199,7 @@ export function LibraryView({
           </div>
           <div className="space-y-2">
             {documents.map(doc => (
-              <DocCard key={doc.id} doc={doc} onProfile={profileDocument} />
+              <DocCard key={doc.id} doc={doc} onProfile={profileDocument} onDelete={deleteDocument} />
             ))}
           </div>
         </div>

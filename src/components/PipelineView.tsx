@@ -1,6 +1,7 @@
 'use client'
 
 import type { AuditRunHook, PhaseStatus, PipelinePhases } from '@/hooks/useAuditRun'
+import { ExtractionReviewPanel } from './ExtractionReviewPanel'
 
 const PHASE_META = {
   prepare: {
@@ -87,14 +88,20 @@ function PhaseCard({
 
 export function PipelineView({
   phases, error, currentJob, setView, resetForNewRun,
-}: Pick<AuditRunHook, 'phases' | 'error' | 'currentJob' | 'setView' | 'resetForNewRun'>) {
+  awaitingExtractionReview, continueAfterExtractionReview,
+}: Pick<AuditRunHook,
+  'phases' | 'error' | 'currentJob' | 'setView' | 'resetForNewRun' |
+  'awaitingExtractionReview' | 'continueAfterExtractionReview'
+>) {
   const allDone = (p: PipelinePhases) =>
     p.prepare === 'done' && p.review === 'done' && p.challenge === 'done' && p.synthesize === 'done'
 
   const hasFailed = (p: PipelinePhases) =>
     p.prepare === 'error' || p.review === 'error' || p.challenge === 'error' || p.synthesize === 'error'
 
-  const isRunning = !allDone(phases) && !hasFailed(phases)
+  const isRunning = !allDone(phases) && !hasFailed(phases) && !awaitingExtractionReview
+
+  const verification = currentJob?.verification ?? null
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
@@ -104,6 +111,7 @@ export function PipelineView({
           Audit Pipeline
         </p>
         <h2 className="text-primary text-xl font-semibold font-display">
+          {awaitingExtractionReview && 'Extraction ready for review'}
           {isRunning && 'Running analysis...'}
           {allDone(phases) && 'Analysis complete'}
           {hasFailed(phases) && 'Analysis failed'}
@@ -118,6 +126,26 @@ export function PipelineView({
       {/* Phase cards */}
       <div className="space-y-3">
         <PhaseCard name="prepare"   status={phases.prepare} />
+
+        {/* Verification summary once extraction is verified */}
+        {verification && phases.prepare === 'done' && !awaitingExtractionReview && (
+          <p className="text-xs text-secondary px-1 font-mono">
+            Deterministic verification: {verification.verifiedFigureSet.length} figures verified ·{' '}
+            <span className={verification.exceptionList.length > 0 ? 'text-negative' : 'text-positive'}>
+              {verification.exceptionList.length} exception{verification.exceptionList.length !== 1 ? 's' : ''}
+            </span>
+          </p>
+        )}
+
+        {/* Track C: pause for extraction tie-out before the agents run */}
+        {awaitingExtractionReview && verification && (
+          <ExtractionReviewPanel
+            verification={verification}
+            controlRun={currentJob?.controlRun ?? false}
+            onContinue={continueAfterExtractionReview}
+            onAbort={resetForNewRun}
+          />
+        )}
 
         {/* Review + Challenge are parallel */}
         <div className="grid grid-cols-2 gap-3">
