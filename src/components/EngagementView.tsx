@@ -27,10 +27,9 @@ export function EngagementView({ engagements, createEngagement, selectEngagement
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-24">
       {/* Logo block */}
-      <div className="mb-12 text-center">
-        <h1 className="font-display text-4xl font-semibold tracking-tight text-primary">
-          FundLens <span className="text-accent">Audit</span>
-        </h1>
+      <div className="mb-12 text-center flex flex-col items-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/fundlens-audit-logo.png" alt="FundLens Audit" width={312} height={150} className="w-[312px] max-w-full h-auto" />
         <p className="mt-3 text-secondary text-base">
           Multi-agent adversarial fund document auditor
         </p>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuditJob, updateAuditJobStatus, savePreparerOutput, saveVerification, setAuditJobFailed } from '@/lib/db/auditJobs'
 import { findDocumentsByIds } from '@/lib/db/documents'
 import { handleAnthropicError } from '@/lib/anthropic/errorHandler'
+import { anthropicFromRequest } from '@/lib/anthropic/client'
 import { buildPreparerSystemPrompt, AGENT_CONFIGS } from '@/lib/agentConfig'
 import { preparerOutputSchema } from '@/lib/zod/schemas'
 import { runAgent } from '@/lib/runAgent'
@@ -52,6 +53,8 @@ export async function POST(
   const { id } = await params
 
   try {
+    const client = anthropicFromRequest(req)
+
     const job = await getAuditJob(id)
     if (!job) {
       return NextResponse.json({ success: false, error: 'Audit job not found.' }, { status: 404 })
@@ -121,6 +124,7 @@ export async function POST(
     const systemPrompt = buildPreparerSystemPrompt(job.fundType, job.auditScope)
 
     const output = await runAgent(
+      client,
       AGENT_CONFIGS.preparer,
       systemPrompt,
       [

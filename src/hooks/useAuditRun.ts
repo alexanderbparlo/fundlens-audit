@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { AuditScope, Engagement, FundDocument, AuditJob, FundType, FindingStatus, FindingStatusRecord, PreparerOutput } from '@/types'
+import { ANTHROPIC_KEY_HEADER, getStoredApiKey } from '@/lib/apiKey'
 
 export type PhaseStatus = 'idle' | 'running' | 'done' | 'error'
 export type AppView = 'engagement' | 'library' | 'setup' | 'pipeline' | 'report'
@@ -57,8 +58,16 @@ export interface AuditRunHook {
 
 // ── Module-level API helpers ──────────────────────────────────────────────────
 
+// BYOK: attach the caller's own Anthropic key to every API request. Routes that
+// don't reach Anthropic simply ignore it; the agent/profile routes require it.
+function withApiKey(init?: RequestInit): RequestInit {
+  const key = getStoredApiKey()
+  if (!key) return init ?? {}
+  return { ...init, headers: { ...init?.headers, [ANTHROPIC_KEY_HEADER]: key } }
+}
+
 async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init)
+  const res = await fetch(url, withApiKey(init))
   if (!res.ok) {
     let msg: string
     try {
@@ -135,8 +144,39 @@ export function useAuditRun(): AuditRunHook {
     if (v !== 'engagement') params.set('view', v)
     if (engagementId)       params.set('eng', engagementId)
     const qs = params.toString()
-    router.push(qs ? `?${qs}` : '/', { scroll: false })
+    // The app is mounted at /app; the bare engagement view (no query) lives there too.
+    router.push(qs ? `/app?${qs}` : '/app', { scroll: false })
   }, [router])
+
+  // ── Replay mode ─────────────────────────────────────────────────────────────
+  // Drive the pipeline view through its phases on a timer from an already-completed
+  // persisted run — no API calls, no agents, no key. Powers the landing page's
+  // "Run a sample audit" demo (a deep link to a pipeline that has no live run).
+  const replayTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const replayingRef = useRef(false)
+  const clearReplay = useCallback(() => {
+    replayTimersRef.current.forEach(clearTimeout)
+    replayTimersRef.current = []
+    replayingRef.current = false
+  }, [])
+  const replayRun = useCallback((job: AuditJob) => {
+    clearReplay()
+    replayingRef.current = true
+    // finalReport present → the finding-status effect loads, and PipelineView's
+    // "View Report" button stays gated on phases until the animation completes.
+    setCurrentJob(job)
+    setPhases({ prepare: 'idle', review: 'idle', challenge: 'idle', synthesize: 'idle' })
+    const at = (ms: number, fn: () => void) => replayTimersRef.current.push(setTimeout(fn, ms))
+    at(200,  () => setPhases(p => ({ ...p, prepare: 'running' })))
+    at(1500, () => setPhases(p => ({ ...p, prepare: 'done' })))
+    at(1850, () => setPhases(p => ({ ...p, review: 'running', challenge: 'running' })))
+    at(3300, () => setPhases(p => ({ ...p, review: 'done' })))
+    at(3750, () => setPhases(p => ({ ...p, challenge: 'done' })))
+    at(4100, () => setPhases(p => ({ ...p, synthesize: 'running' })))
+    at(5500, () => { setPhases(p => ({ ...p, synthesize: 'done' })); replayingRef.current = false })
+  }, [clearReplay])
+  // Clear any pending replay timers on unmount.
+  useEffect(() => clearReplay, [clearReplay])
 
   useEffect(() => {
     if (isLoading) return   // engagement list not loaded yet
@@ -159,8 +199,8 @@ export function useAuditRun(): AuditRunHook {
     if (urlView === viewRef.current) return
 
     // Report and pipeline need a job in memory. On a deep link or refresh,
-    // recover the report from the latest persisted run (Track D); pipeline
-    // runs are client-driven and cannot be re-attached, so land on the library.
+    // recover the report from the latest persisted run (Track D); a live pipeline
+    // run cannot be re-attached, so replay the latest completed run instead.
     if (urlView === 'report' && !jobRef.current?.finalReport && urlEngId) {
       ;(async () => {
         const job = await apiFetch<AuditJob | null>(`/api/audit/latest?engagementId=${urlEngId}`).catch(() => null)
@@ -175,11 +215,25 @@ export function useAuditRun(): AuditRunHook {
       return
     }
     if (urlView === 'pipeline' && !jobRef.current) {
-      setViewState('library')
+      // Replay the latest completed run as a timed animation (demo / revisit);
+      // fall back to the library only if there is no completed run to replay.
+      if (urlEngId && !replayingRef.current) {
+        ;(async () => {
+          const job = await apiFetch<AuditJob | null>(`/api/audit/latest?engagementId=${urlEngId}`).catch(() => null)
+          if (job?.finalReport) {
+            replayRun(job)
+            setViewState('pipeline')
+          } else {
+            setViewState('library')
+          }
+        })()
+      } else if (!urlEngId) {
+        setViewState('library')
+      }
       return
     }
     setViewState(urlView)
-  }, [searchParams, isLoading])
+  }, [searchParams, isLoading, replayRun])
 
   // ── Initial data load ───────────────────────────────────────────────────────
   // Documents are scoped per engagement and loaded on engagement selection.
@@ -246,6 +300,7 @@ export function useAuditRun(): AuditRunHook {
   }, [pushUrl])
   const clearError   = useCallback(() => setError(null), [])
   const resetForNewRun = useCallback(() => {
+    clearReplay()
     setCurrentJob(null)
     setFindingStatuses({})
     setPhases({ prepare: 'idle', review: 'idle', challenge: 'idle', synthesize: 'idle' })
@@ -253,7 +308,7 @@ export function useAuditRun(): AuditRunHook {
     pausedJobIdRef.current = null
     setViewState('setup')
     pushUrl('setup', engRef.current?.id ?? null)
-  }, [pushUrl])
+  }, [pushUrl, clearReplay])
 
   const updateFindingStatus = useCallback(async (
     findingId: string, status: FindingStatus, note?: string | null

@@ -43,3 +43,6 @@ next-env.d.ts
 
 # windows alternate-data-stream artifacts (from WSL downloads)
 *:Zone.Identifier
+
+# internal design docs — keep out of the public repo
+*.docx

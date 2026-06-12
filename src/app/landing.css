@@ -1,0 +1,422 @@
+/* ──────────────────────────────────────────────────────────────────────────
+   Forensic Dark landing page.
+   Ported from design-mockups/forensic-dark-hero.html. Every selector is scoped
+   under .fl-landing so these bespoke marketing styles never leak into /app.
+   Fonts reference the project's next/font variables (--font-display/body/mono).
+   ────────────────────────────────────────────────────────────────────────── */
+
+.fl-landing {
+  /* Tinted neutrals — cooled toward the brand hue, never pure black */
+  --bg:        #070b12;
+  --bg-2:      #0a1019;
+  --panel:     #0d1420;
+  --panel-2:   #111a28;
+  --node:      #131d2c;
+  --line:      #1f2a3a;
+  --line-soft: #18222f;
+
+  --accent:    #00c8b4;
+  --accent-dim:#0a8f84;
+  --positive:  #22d37a;
+  --flag:      #f5a623;
+
+  --text:      #eaf0f8;
+  --secondary: #8a96aa;
+  --muted:     #5a6678;
+  --label:     #6b7785;
+
+  --r: 14px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1); /* ease-out-expo */
+
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  /* No background here on purpose: a positioned div paints its own background
+     above its negative-z-index children, which would hide the ambient canvas
+     (z-index:-1). The fixed, opaque .backdrop (z-index:-2) is the dark base
+     instead — mirroring how the original <body> background sat behind it. */
+  color: var(--text);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+}
+
+/* Layered depth — radial cools, no flat fill */
+.fl-landing .backdrop {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(1100px 700px at 78% 8%, rgba(0,200,180,0.10), transparent 60%),
+    radial-gradient(900px 600px at 12% 92%, rgba(40,90,140,0.10), transparent 60%),
+    linear-gradient(180deg, var(--bg-2), var(--bg) 55%);
+  z-index: -2;
+}
+
+/* Ambient cinematic layer (toggleable) */
+.fl-landing .ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 1100ms var(--ease);
+  pointer-events: none;
+}
+.fl-landing.ambient-on .ambient { opacity: 1; }
+
+/* Faint engraved grid that the ambient layer rides over */
+.fl-landing .grid {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.022) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.022) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(1200px 800px at 70% 30%, #000 0%, transparent 78%);
+  -webkit-mask-image: radial-gradient(1200px 800px at 70% 30%, #000 0%, transparent 78%);
+  pointer-events: none;
+}
+
+.fl-landing .shell { max-width: 1240px; margin: 0 auto; padding: 0 40px; }
+
+/* ── Nav ─────────────────────────────────────────── */
+.fl-landing nav {
+  height: 76px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  z-index: 5;
+}
+.fl-landing .brand-logo { height: 46px; width: auto; display: block; }
+.fl-landing .brand { display: flex; align-items: center; gap: 9px; font-family: var(--font-display); font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+.fl-landing .brand .dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px rgba(0,200,180,0.14), 0 0 16px 2px rgba(0,200,180,0.55);
+  animation: flLivePulse 2.6s var(--ease) infinite;
+}
+.fl-landing .brand .accent { color: var(--accent); }
+@keyframes flLivePulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(0,200,180,0.10), 0 0 14px 1px rgba(0,200,180,0.40); }
+  50%      { box-shadow: 0 0 0 5px rgba(0,200,180,0.18), 0 0 22px 4px rgba(0,200,180,0.70); }
+}
+.fl-landing nav .spacer { flex: 1; }
+.fl-landing .nav-link { color: var(--secondary); font-size: 14px; text-decoration: none; transition: color 220ms var(--ease); }
+.fl-landing .nav-link:hover { color: var(--text); }
+.fl-landing .btn {
+  font-family: var(--font-body);
+  font-size: 14px; font-weight: 500;
+  border-radius: 10px;
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: border-color 220ms var(--ease), background 220ms var(--ease), transform 220ms var(--ease);
+}
+.fl-landing .btn:hover { border-color: rgba(0,200,180,0.4); transform: translateY(-1px); }
+.fl-landing .btn-primary {
+  background: linear-gradient(180deg, rgba(0,200,180,0.16), rgba(0,200,180,0.06));
+  border-color: rgba(0,200,180,0.45);
+  color: #d6fff8;
+}
+.fl-landing .btn-primary:hover { border-color: var(--accent); background: linear-gradient(180deg, rgba(0,200,180,0.24), rgba(0,200,180,0.10)); }
+
+/* ── Hero ────────────────────────────────────────── */
+.fl-landing .hero {
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  gap: 56px;
+  align-items: center;
+  padding: 64px 0 40px;
+  position: relative;
+  z-index: 4;
+}
+.fl-landing .eyebrow {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: var(--font-mono);
+  font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--secondary);
+  border: 1px solid var(--line);
+  background: rgba(13,20,32,0.6);
+  padding: 6px 12px; border-radius: 999px;
+  margin-bottom: 26px;
+}
+.fl-landing .eyebrow b { color: var(--accent); font-weight: 500; }
+.fl-landing h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(38px, 4.4vw, 60px);
+  line-height: 1.02;
+  letter-spacing: -0.022em;
+  margin-bottom: 22px;
+}
+.fl-landing h1 .quiet { color: var(--secondary); font-weight: 700; }
+.fl-landing .lede {
+  font-size: 18px; line-height: 1.55;
+  color: var(--secondary);
+  max-width: 30em;
+  margin-bottom: 32px;
+}
+.fl-landing .cta-row { display: flex; gap: 12px; align-items: center; margin-bottom: 30px; flex-wrap: wrap; }
+.fl-landing .cta-row .btn { padding: 12px 20px; font-size: 15px; }
+.fl-landing .trust {
+  display: flex; flex-wrap: wrap; gap: 8px 18px;
+  font-family: var(--font-mono);
+  font-size: 12.5px; color: var(--muted);
+}
+.fl-landing .trust span { display: inline-flex; align-items: center; gap: 7px; }
+.fl-landing .trust .tick { color: var(--positive); font-style: normal; }
+
+/* ── Pipeline instrument ─────────────────────────── */
+.fl-landing .instrument {
+  position: relative;
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(0,200,180,0.05), transparent 60%),
+    linear-gradient(180deg, var(--panel), var(--bg-2));
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 40px 80px -40px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.fl-landing .inst-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--label); letter-spacing: 0.05em;
+  margin-bottom: 18px;
+}
+.fl-landing .inst-head .live { display: inline-flex; align-items: center; gap: 7px; color: var(--accent); }
+.fl-landing .inst-head .live .pip { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: flLivePulse 2s infinite; }
+
+.fl-landing .graph { display: flex; flex-direction: column; align-items: center; gap: 0; }
+
+/* Document chips row */
+.fl-landing .docs { display: flex; gap: 8px; margin-bottom: 6px; }
+.fl-landing .doc {
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--secondary);
+  border: 1px solid var(--line);
+  background: var(--node);
+  border-radius: 8px; padding: 6px 10px;
+  opacity: 0.4;
+  transition: opacity 500ms var(--ease), border-color 500ms var(--ease), color 500ms var(--ease);
+}
+.fl-landing .doc.lit { opacity: 1; border-color: rgba(0,200,180,0.35); color: var(--text); }
+
+/* Connectors */
+.fl-landing .conn { width: 2px; height: 26px; background: var(--line); position: relative; overflow: hidden; border-radius: 2px; }
+.fl-landing .conn.split { width: 220px; height: 26px; background: none; }
+.fl-landing .conn.split svg { display: block; }
+.fl-landing .conn.split svg path { stroke: var(--line); stroke-width: 2; fill: none; transition: stroke 450ms var(--ease); }
+.fl-landing .conn.split.active svg path { stroke: rgba(0,200,180,0.7); }
+.fl-landing .conn .flow {
+  position: absolute; left: 0; top: -40%; width: 100%; height: 40%;
+  background: linear-gradient(180deg, transparent, var(--accent), transparent);
+  opacity: 0;
+}
+.fl-landing .conn.active .flow { opacity: 0.9; animation: flFlowDown 900ms linear infinite; }
+@keyframes flFlowDown { from { top: -45%; } to { top: 105%; } }
+
+/* Nodes */
+.fl-landing .node {
+  width: 100%;
+  max-width: 380px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--node), var(--panel));
+  border-radius: var(--r);
+  padding: 13px 15px;
+  display: flex; align-items: center; gap: 12px;
+  transition: border-color 450ms var(--ease), box-shadow 450ms var(--ease), transform 450ms var(--ease);
+}
+.fl-landing .node.parallel { max-width: 184px; }
+.fl-landing .pair { display: flex; gap: 12px; width: 100%; max-width: 380px; justify-content: center; }
+.fl-landing .node .ico {
+  width: 30px; height: 30px; flex: none; border-radius: 8px;
+  border: 1px solid var(--line);
+  display: grid; place-items: center;
+  color: var(--secondary);
+  background: var(--bg-2);
+  transition: color 450ms var(--ease), border-color 450ms var(--ease);
+}
+.fl-landing .node .ico svg { width: 15px; height: 15px; }
+.fl-landing .node .meta { min-width: 0; }
+.fl-landing .node .name { font-family: var(--font-display); font-weight: 700; font-size: 13.5px; letter-spacing: 0.01em; }
+.fl-landing .node .state { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-landing .node .badge {
+  margin-left: auto; flex: none;
+  font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--muted); opacity: 0;
+  transition: opacity 350ms var(--ease);
+}
+.fl-landing .node[data-status="active"] {
+  border-color: rgba(0,200,180,0.55);
+  box-shadow: 0 0 0 1px rgba(0,200,180,0.18), 0 16px 40px -20px rgba(0,200,180,0.5);
+}
+.fl-landing .node[data-status="active"] .ico { color: var(--accent); border-color: rgba(0,200,180,0.5); }
+.fl-landing .node[data-status="active"] .state { color: var(--accent); }
+.fl-landing .node[data-status="done"] { border-color: var(--line); }
+.fl-landing .node[data-status="done"] .ico { color: var(--positive); border-color: rgba(34,211,122,0.4); }
+.fl-landing .node[data-status="done"] .state { color: var(--secondary); }
+.fl-landing .node[data-status="done"] .badge { opacity: 1; color: var(--positive); }
+
+/* Verification check grid */
+.fl-landing .verify {
+  margin-top: 16px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 14px;
+}
+.fl-landing .verify-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 11px; color: var(--label);
+  margin-bottom: 10px;
+}
+.fl-landing .progress { width: 120px; height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.fl-landing .progress .bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); transition: width 400ms var(--ease); }
+.fl-landing .checks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 16px; }
+.fl-landing .check {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11.5px;
+  color: var(--muted);
+  opacity: 0.45;
+  transition: opacity 350ms var(--ease), color 350ms var(--ease);
+}
+.fl-landing .check .mk {
+  width: 14px; height: 14px; flex: none; border-radius: 4px;
+  border: 1px solid var(--line);
+  display: grid; place-items: center; font-size: 9px;
+  color: transparent;
+  transition: all 350ms var(--ease);
+}
+.fl-landing .check .id { color: var(--label); }
+.fl-landing .check.ok { opacity: 1; color: var(--secondary); }
+.fl-landing .check.ok .mk { background: rgba(34,211,122,0.14); border-color: rgba(34,211,122,0.5); color: var(--positive); }
+.fl-landing .check.flagged { opacity: 1; color: var(--secondary); }
+.fl-landing .check.flagged .mk { background: rgba(245,166,35,0.14); border-color: rgba(245,166,35,0.55); color: var(--flag); }
+
+.fl-landing .result {
+  margin-top: 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(0,200,180,0.07), rgba(0,200,180,0.02));
+  border-radius: 12px; padding: 11px 14px;
+  opacity: 0; transform: translateY(6px);
+  transition: opacity 600ms var(--ease), transform 600ms var(--ease);
+}
+.fl-landing .result.show { opacity: 1; transform: none; }
+.fl-landing .result .r-main { font-family: var(--font-display); font-weight: 700; font-size: 14px; }
+.fl-landing .result .r-main b { color: var(--accent); }
+.fl-landing .result .r-sub { font-family: var(--font-mono); font-size: 11px; color: var(--secondary); }
+.fl-landing .result .arrow { color: var(--accent); }
+
+/* ── Content sections (How it works · Methodology) ─── */
+.fl-landing .section {
+  position: relative; z-index: 4;
+  padding: 72px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.fl-landing .section-eyebrow {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--accent);
+  margin-bottom: 14px;
+}
+.fl-landing .section h2 {
+  font-family: var(--font-display); font-weight: 800;
+  font-size: clamp(26px, 3vw, 36px); letter-spacing: -0.02em;
+  line-height: 1.08; margin-bottom: 14px; max-width: 18em;
+}
+.fl-landing .section .section-lede {
+  font-size: 16.5px; line-height: 1.55; color: var(--secondary);
+  max-width: 42em; margin-bottom: 40px;
+}
+
+/* How it works — numbered steps */
+.fl-landing .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.fl-landing .step {
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--panel), var(--bg-2));
+  border-radius: var(--r); padding: 20px 18px;
+}
+.fl-landing .step .num {
+  font-family: var(--font-mono); font-size: 12px; color: var(--accent);
+  letter-spacing: 0.08em; margin-bottom: 14px;
+}
+.fl-landing .step .step-name { font-family: var(--font-display); font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+.fl-landing .step .step-body { font-size: 13.5px; line-height: 1.5; color: var(--secondary); }
+.fl-landing .step .agents {
+  font-family: var(--font-mono); font-size: 11px; color: var(--muted);
+  margin-top: 12px; letter-spacing: 0.03em;
+}
+
+/* Methodology — pillar grid */
+.fl-landing .method-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.fl-landing .method {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: var(--r); padding: 22px 20px;
+}
+.fl-landing .method h3 { font-family: var(--font-display); font-weight: 700; font-size: 17px; margin-bottom: 10px; }
+.fl-landing .method p { font-size: 14px; line-height: 1.55; color: var(--secondary); }
+.fl-landing .method .checklist {
+  list-style: none; margin-top: 14px; display: grid; gap: 6px;
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--secondary);
+}
+.fl-landing .method .checklist li { display: flex; gap: 8px; align-items: baseline; }
+.fl-landing .method .checklist .cid { color: var(--accent); flex: none; }
+
+.fl-landing footer.foot {
+  position: relative; z-index: 4;
+  border-top: 1px solid var(--line-soft);
+  padding: 32px 0 56px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  font-family: var(--font-mono); font-size: 12px; color: var(--muted);
+  flex-wrap: wrap;
+}
+
+/* ── Ambient toggle dock ─────────────────────────── */
+.fl-landing .toggle-dock {
+  position: fixed; right: 22px; bottom: 22px; z-index: 30;
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(10,16,25,0.82);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: 14px; padding: 11px 14px;
+  box-shadow: 0 20px 50px -20px rgba(0,0,0,0.7);
+}
+.fl-landing .toggle-dock .lab { font-family: var(--font-mono); font-size: 12px; color: var(--secondary); }
+.fl-landing .toggle-dock .lab small { display: block; color: var(--muted); font-size: 10.5px; margin-top: 1px; }
+.fl-landing .switch { position: relative; width: 46px; height: 26px; flex: none; cursor: pointer; }
+.fl-landing .switch input { opacity: 0; width: 0; height: 0; }
+.fl-landing .switch .track {
+  position: absolute; inset: 0; border-radius: 999px;
+  background: var(--line); border: 1px solid var(--line);
+  transition: background 300ms var(--ease), border-color 300ms var(--ease);
+}
+.fl-landing .switch .knob {
+  position: absolute; top: 3px; left: 3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--secondary);
+  transition: transform 320ms var(--ease), background 320ms var(--ease);
+}
+.fl-landing .switch input:checked + .track { background: rgba(0,200,180,0.25); border-color: rgba(0,200,180,0.6); }
+.fl-landing .switch input:checked + .track + .knob { transform: translateX(20px); background: var(--accent); box-shadow: 0 0 12px rgba(0,200,180,0.7); }
+
+@media (max-width: 920px) {
+  .fl-landing .hero { grid-template-columns: 1fr; gap: 36px; }
+  .fl-landing .shell { padding: 0 24px; }
+  .fl-landing .steps { grid-template-columns: repeat(2, 1fr); }
+  .fl-landing .method-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .fl-landing .steps { grid-template-columns: 1fr; }
+  .fl-landing nav .nav-link { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fl-landing *, .fl-landing *::before, .fl-landing *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

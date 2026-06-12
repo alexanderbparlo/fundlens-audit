@@ -1,5 +1,4 @@
 import type Anthropic from '@anthropic-ai/sdk'
-import client from './anthropic/client'
 import { extractText, parseAgentJson } from './buildDocumentBlocks'
 
 // Either a plain text message or a content-block array (document blocks + text)
@@ -42,6 +41,7 @@ function assertNotTruncated(stopReason: string | null, phase: string): void {
  * Profiler sends document blocks and is handled directly in its route).
  */
 export async function runAgent<T>(
+  client: Anthropic,
   config: AgentConfig,
   systemPrompt: string,
   userMessage: UserContent,

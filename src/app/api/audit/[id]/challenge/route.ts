@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuditJob, updateAuditJobStatus, saveChallengerOutput, setAuditJobFailed } from '@/lib/db/auditJobs'
 import { handleAnthropicError } from '@/lib/anthropic/errorHandler'
+import { anthropicFromRequest } from '@/lib/anthropic/client'
 import { buildChallengerSystemPrompt, AGENT_CONFIGS } from '@/lib/agentConfig'
 import { challengerOutputSchema } from '@/lib/zod/schemas'
 import { runAgent } from '@/lib/runAgent'
@@ -20,6 +21,8 @@ export async function POST(
   const { id } = await params
 
   try {
+    const client = anthropicFromRequest(req)
+
     const job = await getAuditJob(id)
     if (!job) {
       return NextResponse.json({ success: false, error: 'Audit job not found.' }, { status: 404 })
@@ -57,6 +60,7 @@ ${deterministicBlock}
 Apply your adversarial lens and return your ChallengerOutput JSON.`
 
     const output = await runAgent(
+      client,
       AGENT_CONFIGS.challenger,
       buildChallengerSystemPrompt(job.fundType, job.auditScope),
       userMessage,

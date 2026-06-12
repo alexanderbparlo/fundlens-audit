@@ -7,7 +7,7 @@ import { documentProfileSchema } from '@/lib/zod/schemas'
 import { bufferToBase64 } from '@/lib/utils'
 import { enforceRateLimit } from '@/lib/rateLimit'
 import type { DocumentCategory, DocumentProfile } from '@/types'
-import client from '@/lib/anthropic/client'
+import { anthropicFromRequest } from '@/lib/anthropic/client'
 
 export const maxDuration = 60
 
@@ -21,6 +21,8 @@ export async function POST(
   if (limited) return limited
 
   try {
+    const client = anthropicFromRequest(req)
+
     const document = await findDocumentById(id)
     if (!document) {
       return NextResponse.json({ success: false, error: 'Document not found.' }, { status: 404 })

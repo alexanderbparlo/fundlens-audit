@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuditJob, updateAuditJobStatus, saveFinalReport, setAuditJobFailed } from '@/lib/db/auditJobs'
 import { handleAnthropicError } from '@/lib/anthropic/errorHandler'
+import { anthropicFromRequest } from '@/lib/anthropic/client'
 import { buildSynthesizerSystemPrompt, AGENT_CONFIGS } from '@/lib/agentConfig'
 import { synthesisReportSchema } from '@/lib/zod/schemas'
 import { runAgent } from '@/lib/runAgent'
@@ -20,6 +21,8 @@ export async function POST(
   const { id } = await params
 
   try {
+    const client = anthropicFromRequest(req)
+
     const job = await getAuditJob(id)
     if (!job) {
       return NextResponse.json({ success: false, error: 'Audit job not found.' }, { status: 404 })
@@ -60,6 +63,7 @@ ${JSON.stringify(job.challengerOutput, null, 2)}
 Apply the EQR gate and produce the final SynthesisReport JSON.`
 
     const output = await runAgent(
+      client,
       AGENT_CONFIGS.synthesizer,
       buildSynthesizerSystemPrompt(job.fundType, job.auditScope),
       userMessage,

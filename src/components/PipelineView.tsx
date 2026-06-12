@@ -118,7 +118,7 @@ export function PipelineView({
         </h2>
         {isRunning && (
           <p className="text-secondary text-sm mt-2">
-            This takes 2–4 minutes. Each phase is an independent AI agent.
+            This may take several minutes. Each phase is an independent AI agent.
           </p>
         )}
       </div>

@@ -1,5 +1,6 @@
 import type { AuditJob, Engagement, Finding, FindingStatus } from '@/types'
 import { FINDING_STATUS_LABELS, FUND_TYPE_LABELS, SEVERITY_LABELS } from '@/lib/utils'
+import { BRAND_LOGO_LIGHT_DATA_URI } from './brandLogo'
 
 /** Escape text for safe interpolation into HTML. */
 function esc(value: string | number | null | undefined): string {
@@ -133,6 +134,7 @@ export function reportToPrintableHtml(
   body { font-family: Georgia, 'Times New Roman', serif; color: #1a1f2e; line-height: 1.5; margin: 0; font-size: 11pt; }
   .meta, .tag, .sev, .num, .fid, table, .urgency, .pbc-pri { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
   header { border-bottom: 2px solid #1a1f2e; padding-bottom: 14px; margin-bottom: 20px; }
+  .brand-logo { height: 38px; width: auto; display: block; margin-bottom: 10px; }
   .eyebrow { text-transform: uppercase; letter-spacing: 0.12em; font-size: 8pt; color: #6b7785; font-family: -apple-system, sans-serif; }
   h1 { font-size: 20pt; margin: 4px 0 6px; }
   .meta { font-size: 9pt; color: #475467; }
@@ -184,7 +186,8 @@ export function reportToPrintableHtml(
 </head>
 <body>
   <header>
-    <div class="eyebrow">FundLens Audit — Final Report</div>
+    <img class="brand-logo" src="${BRAND_LOGO_LIGHT_DATA_URI}" alt="FundLens Audit" />
+    <div class="eyebrow">Final Report</div>
     <h1>${esc(title)}</h1>
     <div class="meta">
       ${fundLabel ? `<span>${esc(fundLabel)} Fund</span>` : ''}

@@ -83,13 +83,16 @@ Apply `src/lib/db/schema.sql` to your Neon project once before first run.
 ### Environment variables
 
 ```bash
-ANTHROPIC_API_KEY=        # server-side only
 DATABASE_URL=             # Neon Postgres
 BLOB_READ_WRITE_TOKEN=    # Vercel Blob
 UPSTASH_REDIS_REST_URL=   # optional — in-memory fallback in dev
 UPSTASH_REDIS_REST_TOKEN=
 CLOUDCONVERT_API_KEY=     # optional — DOCX→PDF conversion
 ```
+
+**Anthropic key (BYOK).** There is no server-side Anthropic key. Each user
+supplies their own key in the app UI — it is held in that browser tab only
+(`sessionStorage`), sent with each request, and never persisted server-side.
 
 ### Synthetic test corpus
 

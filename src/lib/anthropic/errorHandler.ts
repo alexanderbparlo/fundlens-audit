@@ -1,7 +1,25 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { NextResponse } from 'next/server'
+import { MissingApiKeyError } from '@/lib/anthropic/client'
 
 export function handleAnthropicError(error: unknown): NextResponse {
+  // BYOK: a missing caller key is a client error, not a service failure.
+  if (error instanceof MissingApiKeyError) {
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 401 }
+    )
+  }
+
+  // An invalid/expired user key surfaces as a 401 from Anthropic — translate it
+  // into actionable guidance rather than a raw "AI service error".
+  if (error instanceof Anthropic.AuthenticationError) {
+    return NextResponse.json(
+      { success: false, error: 'Your Anthropic API key was rejected. Check the key and try again.' },
+      { status: 401 }
+    )
+  }
+
   if (error instanceof Anthropic.APIConnectionError) {
     console.error('[Anthropic] Connection error:', error.message)
     return NextResponse.json(
