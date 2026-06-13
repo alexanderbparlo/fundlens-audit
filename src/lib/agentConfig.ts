@@ -6,7 +6,7 @@ import type { AuditScope, FundType } from '@/types'
 // ─────────────────────────────────────────────────────────────────────────────
 export const PROMPT_VERSION = '1.3.0'
 export const MODEL_VERSION = 'claude-opus-4-8'
-export const CHALLENGER_MODEL_VERSION = 'claude-fable-5'
+export const CHALLENGER_MODEL_VERSION = 'claude-opus-4-8'
 
 // ── Per-agent model configuration ────────────────────────────────────────────
 // Thinking effort is calibrated to the cognitive demands of each role.
