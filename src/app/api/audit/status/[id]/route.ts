@@ -16,7 +16,6 @@ export async function GET(
     return NextResponse.json({ success: true, data: job })
   } catch (error) {
     console.error('[audit/status] Error:', error)
-    const message = error instanceof Error ? error.message : 'Failed to get audit status.'
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Failed to get audit status.' }, { status: 500 })
   }
 }

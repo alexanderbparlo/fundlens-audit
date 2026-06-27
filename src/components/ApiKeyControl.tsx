@@ -22,8 +22,11 @@ export function ApiKeyControl() {
   const panelRef = useRef<HTMLDivElement>(null)
 
   // sessionStorage is browser-only — read it after mount to avoid hydration drift.
+  // This is a legitimate effect: syncing React state from an external platform
+  // API (sessionStorage), which is exactly the carve-out the lint rule documents.
   useEffect(() => {
     const stored = getStoredApiKey()
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from sessionStorage on mount
     setHasKey(Boolean(stored))
     if (!stored) setOpen(true)
   }, [])

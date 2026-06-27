@@ -14,7 +14,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, data: job })
   } catch (error) {
     console.error('[audit/latest] Error:', error)
-    const message = error instanceof Error ? error.message : 'Failed to load the latest run.'
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Failed to load the latest run.' }, { status: 500 })
   }
 }

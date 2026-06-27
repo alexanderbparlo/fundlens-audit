@@ -10,8 +10,7 @@ export async function GET() {
     return NextResponse.json({ success: true, data: engagements })
   } catch (error) {
     console.error('[engagements] List error:', error)
-    const message = error instanceof Error ? error.message : 'Failed to list engagements.'
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Failed to list engagements.' }, { status: 500 })
   }
 }
 
@@ -44,7 +43,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, data: engagement }, { status: 201 })
   } catch (error) {
     console.error('[engagements] Create error:', error)
-    const message = error instanceof Error ? error.message : 'Failed to create engagement.'
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Failed to create engagement.' }, { status: 500 })
   }
 }

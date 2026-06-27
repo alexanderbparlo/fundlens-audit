@@ -399,7 +399,7 @@ export function useAuditRun(): AuditRunHook {
       setUploadProgress(p => ({ ...p, [key]: 'profiling' }))
       const profiled = await apiFetch<FundDocument>(`/api/documents/profile/${doc.id}`, { method: 'POST' })
       setDocuments(prev => prev.map(d => d.id === profiled.id ? profiled : d))
-      setUploadProgress(p => { const { [key]: _, ...rest } = p; return rest })
+      setUploadProgress(p => { const rest = { ...p }; delete rest[key]; return rest })
     } catch (err) {
       setUploadProgress(p => ({ ...p, [key]: 'error' }))
       setError(err instanceof Error ? err.message : 'Upload failed.')
@@ -435,7 +435,8 @@ export function useAuditRun(): AuditRunHook {
   const toggleDocSelection = useCallback((docId: string) => {
     setSelectedDocIds(prev => {
       const next = new Set(prev)
-      next.has(docId) ? next.delete(docId) : next.add(docId)
+      if (next.has(docId)) next.delete(docId)
+      else next.add(docId)
       return next
     })
   }, [])

@@ -16,7 +16,6 @@ export async function GET(
     return NextResponse.json({ success: true, data: engagement })
   } catch (error) {
     console.error('[engagements] Get error:', error)
-    const message = error instanceof Error ? error.message : 'Failed to get engagement.'
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Failed to get engagement.' }, { status: 500 })
   }
 }

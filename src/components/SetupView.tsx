@@ -30,7 +30,6 @@ export function SetupView({
 
   const profiledDocs    = documents.filter(d => d.profileJson)
   const selectionArray  = Array.from(selectedDocIds)
-  const allSelected     = selectedDocIds.has
 
   const canRun = selectionArray.length > 0 && selectionArray.every(id => {
     const doc = documents.find(d => d.id === id)

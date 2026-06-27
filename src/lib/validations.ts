@@ -1,6 +1,6 @@
 import type {
   PreparerOutput, DocumentProfile,
-  DeterministicCheck, DeterministicStatus, CheckFamily,
+  DeterministicCheck, DeterministicStatus,
   VerificationResult, VerifiedFigure,
 } from '@/types'
 import { normalizeNavBridge, normalizeRollforwardFlows } from './normalize'

@@ -16,8 +16,7 @@ export async function GET(
     return NextResponse.json({ success: true, data: statuses })
   } catch (error) {
     console.error('[audit/findings] List error:', error)
-    const message = error instanceof Error ? error.message : 'Failed to list finding statuses.'
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Failed to list finding statuses.' }, { status: 500 })
   }
 }
 
@@ -50,7 +49,6 @@ export async function PATCH(
     return NextResponse.json({ success: true, data: record })
   } catch (error) {
     console.error('[audit/findings] Update error:', error)
-    const message = error instanceof Error ? error.message : 'Failed to update finding status.'
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'Failed to update finding status.' }, { status: 500 })
   }
 }
