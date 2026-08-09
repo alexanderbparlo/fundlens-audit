@@ -1,0 +1,291 @@
+{
+  "fundName": "Bridgepoint Private Equity Fund III, LP",
+  "fundType": "PE",
+  "vintageYear": 2016,
+  "fiscalYearEnd": "2023-12-31",
+  "currency": "USD",
+  "totalCommittedCapital": null,
+  "calledCapital": null,
+  "uncalledCapital": null,
+  "nav": {
+    "total": 177125,
+    "perUnit": null,
+    "asOfDate": "2023-12-31"
+  },
+  "capitalAccounts": [
+    {
+      "lpId": "Lighthouse Endowment Partners (BPEF3-LP-0017)",
+      "beginningBalance": 8420,
+      "contributions": 950,
+      "distributions": 1100,
+      "allocatedIncomeLoss": 1772,
+      "endingBalance": 10292
+    }
+  ],
+  "statedPerformanceMetrics": null,
+  "balanceSheet": {
+    "totalAssets": 203515,
+    "totalLiabilities": 26790,
+    "totalPartnersCapital": 177125,
+    "cashAndEquivalents": 12310,
+    "asOfDate": "2023-12-31"
+  },
+  "navBridge": {
+    "periodLabel": "FY2023",
+    "beginningNav": 152840,
+    "contributions": 12500,
+    "distributions": 18810,
+    "realizedGainLoss": null,
+    "unrealizedGainLoss": null,
+    "feesAndExpenses": null,
+    "otherChanges": 31095,
+    "endingNav": 177625
+  },
+  "statementSections": {
+    "assets": {
+      "lineItems": [
+        {
+          "label": "Investments, at fair value",
+          "amount": 187450
+        },
+        {
+          "label": "Cash and cash equivalents",
+          "amount": 12310
+        },
+        {
+          "label": "Dividends and interest receivable",
+          "amount": 890
+        },
+        {
+          "label": "Due from brokers",
+          "amount": 3240
+        },
+        {
+          "label": "Prepaid expenses",
+          "amount": 125
+        }
+      ],
+      "statedTotal": 203515
+    },
+    "liabilities": {
+      "lineItems": [
+        {
+          "label": "Securities sold short, at fair value",
+          "amount": 19450
+        },
+        {
+          "label": "Accrued management fees",
+          "amount": 780
+        },
+        {
+          "label": "Accrued performance allocation",
+          "amount": 4120
+        },
+        {
+          "label": "Due to brokers",
+          "amount": 2100
+        },
+        {
+          "label": "Accrued expenses and other liabilities",
+          "amount": 340
+        }
+      ],
+      "statedTotal": 26790
+    },
+    "operations": {
+      "lineItems": [
+        {
+          "label": "Net Investment Loss",
+          "amount": -3495
+        },
+        {
+          "label": "Net Gain on Investments",
+          "amount": 34090
+        }
+      ],
+      "statedTotal": 31095
+    }
+  },
+  "fairValueHierarchy": [
+    {
+      "periodLabel": "FY2023",
+      "asOfDate": "2023-12-31",
+      "level1": 163210,
+      "level2": 18720,
+      "level3": 5520,
+      "statedTotal": 188200,
+      "balanceSheetInvestmentsLine": 187450
+    }
+  ],
+  "rollforwards": [
+    {
+      "tableName": "Capital Account Rollforward \u2014 Fund Total (per Lighthouse CAS)",
+      "subject": "capital",
+      "periodLabel": "FY2023",
+      "beginningBalance": 142840,
+      "beginningPeriodLabel": "2023-01-01",
+      "flows": [
+        {
+          "label": "Capital contributions (Fund III Q2 call)",
+          "amount": 9500
+        },
+        {
+          "label": "Capital distributions (partial exit Meridian)",
+          "amount": -18800
+        },
+        {
+          "label": "Net investment loss allocated",
+          "amount": -1420
+        },
+        {
+          "label": "Net realized gain allocated",
+          "amount": 20500
+        },
+        {
+          "label": "Net unrealized appreciation allocated",
+          "amount": 8020
+        },
+        {
+          "label": "Performance allocation to General Partner",
+          "amount": -4120
+        }
+      ],
+      "statedEndingBalance": 156520,
+      "endingPeriodLabel": "2023-12-31"
+    }
+  ],
+  "periodCapitalActivity": null,
+  "statementOfChanges": {
+    "periodLabel": "FY2023",
+    "beginningCapital": 152840,
+    "endingCapital": 177625
+  },
+  "valuationDisclosures": {
+    "independentValuationFirm": null,
+    "independentValuationScope": "75% of Level 3 fair value (per management)",
+    "methodologySummary": "Note 2 describes market and income approaches for Level 2 and Level 3; Level 3 rollforward not presented (FV-5 accepted as not required).",
+    "unobservableInputsDisclosed": false
+  },
+  "workpaperMetadata": [
+    {
+      "documentName": "BPEF3-2023-FS-001 \u2014 Audit Workpaper (Deloitte & Rosen LLP)",
+      "preparedBy": "T. Williams",
+      "preparedDate": "2024-02-14",
+      "reviewedBy": "P. Singh, CPA",
+      "reviewedDate": "2024-02-09"
+    }
+  ],
+  "investments": [],
+  "feeTerms": {
+    "managementFeeRate": 0.02,
+    "managementFeeBase": null,
+    "carriedInterestRate": 0.2,
+    "preferredReturn": null,
+    "hurdleRate": null,
+    "catchUpRate": null,
+    "waterfallType": null,
+    "gpCommitmentPercent": null,
+    "clawbackPresent": null,
+    "clawbackTerms": null,
+    "feeOffsets": null
+  },
+  "investmentPeriod": null,
+  "fundTerm": null,
+  "keyPersonProvisions": null,
+  "sideLetters": {
+    "present": false,
+    "count": null,
+    "summaryNotes": []
+  },
+  "ericaStatus": null,
+  "ascDisclosures": {
+    "fairValueHierarchyPresent": true,
+    "investmentCompanyGuidanceCited": true,
+    "financialHighlightsPresent": false,
+    "subsequentEventsDisclosed": true,
+    "relatedPartyDisclosuresPresent": true,
+    "scheduleOfInvestmentsPresent": false
+  },
+  "auditFirm": "Deloitte & Rosen LLP",
+  "sourceCitations": {
+    "balanceSheet": {
+      "documentId": "pe-bridgepoint-fs",
+      "documentName": "FS_Flawed_BridgepointPE_Fund3_2023.pdf",
+      "page": 1,
+      "section": "Statement of Assets, Liabilities, and Partners' Capital",
+      "excerpt": null
+    },
+    "statementSections.assets": {
+      "documentId": "pe-bridgepoint-fs",
+      "documentName": "FS_Flawed_BridgepointPE_Fund3_2023.pdf",
+      "page": 1,
+      "section": "Statement of Assets, Liabilities, and Partners' Capital",
+      "excerpt": null
+    },
+    "statementSections.liabilities": {
+      "documentId": "pe-bridgepoint-fs",
+      "documentName": "FS_Flawed_BridgepointPE_Fund3_2023.pdf",
+      "page": 1,
+      "section": "Statement of Assets, Liabilities, and Partners' Capital",
+      "excerpt": null
+    },
+    "statementSections.operations": {
+      "documentId": "pe-bridgepoint-fs",
+      "documentName": "FS_Flawed_BridgepointPE_Fund3_2023.pdf",
+      "page": 2,
+      "section": "Statement of Operations",
+      "excerpt": null
+    },
+    "navBridge": {
+      "documentId": "pe-bridgepoint-fs",
+      "documentName": "FS_Flawed_BridgepointPE_Fund3_2023.pdf",
+      "page": 3,
+      "section": "Statement of Changes in Partners' Capital",
+      "excerpt": null
+    },
+    "statementOfChanges": {
+      "documentId": "pe-bridgepoint-fs",
+      "documentName": "FS_Flawed_BridgepointPE_Fund3_2023.pdf",
+      "page": 3,
+      "section": "Statement of Changes in Partners' Capital",
+      "excerpt": null
+    },
+    "fairValueHierarchy": {
+      "documentId": "pe-bridgepoint-fs",
+      "documentName": "FS_Flawed_BridgepointPE_Fund3_2023.pdf",
+      "page": 3,
+      "section": "Note 2 \u2014 Fair Value Measurements (ASC 820)",
+      "excerpt": null
+    },
+    "feeTerms": {
+      "documentId": "pe-bridgepoint-fs",
+      "documentName": "FS_Flawed_BridgepointPE_Fund3_2023.pdf",
+      "page": 3,
+      "section": "Note 3 \u2014 Management Fees and Performance Allocation",
+      "excerpt": null
+    },
+    "workpaperMetadata": {
+      "documentId": "pe-bridgepoint-aw",
+      "documentName": "AW_Flawed_BridgepointPE_Fund3_2023.pdf",
+      "page": 1,
+      "section": "Header / Section 2 \u2014 Internal Controls Assessment",
+      "excerpt": null
+    },
+    "capitalAccounts": {
+      "documentId": "pe-bridgepoint-cas",
+      "documentName": "CAS_Flawed_BridgepointPE_LighthouseLP_2023.pdf",
+      "page": 1,
+      "section": "Capital Account Rollforward",
+      "excerpt": null
+    },
+    "rollforwards": {
+      "documentId": "pe-bridgepoint-cas",
+      "documentName": "CAS_Flawed_BridgepointPE_LighthouseLP_2023.pdf",
+      "page": 1,
+      "section": "Capital Account Rollforward",
+      "excerpt": null
+    }
+  },
+  "promptVersion": "control-run-r3",
+  "modelVersion": "control"
+}

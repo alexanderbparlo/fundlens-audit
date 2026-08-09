@@ -1,0 +1,253 @@
+{
+  "fundName": "Ironwood Multi-Strategy Fund II, LP",
+  "fundType": "HF",
+  "vintageYear": 2019,
+  "fiscalYearEnd": "2023-12-31",
+  "currency": "USD",
+  "totalCommittedCapital": 375000,
+  "calledCapital": 290000,
+  "uncalledCapital": 85000,
+  "nav": {
+    "total": 312500,
+    "perUnit": null,
+    "asOfDate": "2023-12-31"
+  },
+  "capitalAccounts": [],
+  "statedPerformanceMetrics": {
+    "tvpi": 1.31,
+    "dpi": 0.18,
+    "rvpi": 1.08,
+    "netIrr": 0.142,
+    "grossIrr": null,
+    "moic": null,
+    "cumulativeDistributions": 42000
+  },
+  "balanceSheet": {
+    "totalAssets": null,
+    "totalLiabilities": 21400,
+    "totalPartnersCapital": 312500,
+    "cashAndEquivalents": 21400,
+    "asOfDate": "2023-12-31"
+  },
+  "navBridge": {
+    "periodLabel": "Q4 2023",
+    "beginningNav": 285100,
+    "contributions": 15000,
+    "distributions": 8200,
+    "realizedGainLoss": null,
+    "unrealizedGainLoss": 22400,
+    "feesAndExpenses": 4200,
+    "otherChanges": null,
+    "endingNav": 312500
+  },
+  "statementSections": null,
+  "fairValueHierarchy": [
+    {
+      "periodLabel": "Q4 2023",
+      "asOfDate": "2023-12-31",
+      "level1": null,
+      "level2": 84100,
+      "level3": 228400,
+      "statedTotal": 312500,
+      "balanceSheetInvestmentsLine": 312500
+    }
+  ],
+  "rollforwards": [
+    {
+      "tableName": "Level 3 Rollforward \u2014 Q4 2023",
+      "subject": "level3",
+      "periodLabel": "Q4 2023",
+      "beginningBalance": 248100,
+      "beginningPeriodLabel": "2023-09-30",
+      "flows": [
+        {
+          "label": "Purchases/follow-on investments",
+          "amount": 15000
+        },
+        {
+          "label": "Distributions/exits",
+          "amount": -8200
+        },
+        {
+          "label": "Net unrealized appreciation",
+          "amount": 22400
+        }
+      ],
+      "statedEndingBalance": 279100,
+      "endingPeriodLabel": "2023-12-31"
+    }
+  ],
+  "periodCapitalActivity": {
+    "periodLabel": "Q4 2023",
+    "periodCapitalCalls": 15000,
+    "periodDistributions": 8200,
+    "cumulativeCalledBeginning": 290000,
+    "cumulativeCalledEnding": 290000,
+    "cumulativeDistributionsBeginning": 33800,
+    "cumulativeDistributionsEnding": 42000
+  },
+  "statementOfChanges": null,
+  "valuationDisclosures": {
+    "independentValuationFirm": "XYZ Valuation Services, LLC",
+    "independentValuationScope": "approximately 75% of portfolio fair value",
+    "methodologySummary": "Level 3 portfolio company investments valued quarterly using market and income approaches.",
+    "unobservableInputsDisclosed": false
+  },
+  "workpaperMetadata": [],
+  "investments": [
+    {
+      "name": "Meridian Tech Holdings",
+      "cost": 25000,
+      "fairValue": 44100,
+      "unrealizedGainLoss": 19100,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "Apex Biomedical, Inc.",
+      "cost": 18400,
+      "fairValue": 24800,
+      "unrealizedGainLoss": 6400,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "TrueFlow Logistics",
+      "cost": 9800,
+      "fairValue": 12500,
+      "unrealizedGainLoss": 2700,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "Vantage Credit Partners (HF)",
+      "cost": 40000,
+      "fairValue": 48900,
+      "unrealizedGainLoss": 8900,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 2,
+      "valuationMethodology": null
+    },
+    {
+      "name": "Summit Growth Equity (co-invest)",
+      "cost": 12000,
+      "fairValue": 17200,
+      "unrealizedGainLoss": 5200,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "Pacific Coast Real Assets",
+      "cost": 30000,
+      "fairValue": 35200,
+      "unrealizedGainLoss": 5200,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 2,
+      "valuationMethodology": null
+    },
+    {
+      "name": "All other investments (12 companies)",
+      "cost": 89000,
+      "fairValue": 129800,
+      "unrealizedGainLoss": 40800,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    }
+  ],
+  "feeTerms": {
+    "managementFeeRate": null,
+    "managementFeeBase": null,
+    "carriedInterestRate": null,
+    "preferredReturn": null,
+    "hurdleRate": null,
+    "catchUpRate": null,
+    "waterfallType": null,
+    "gpCommitmentPercent": null,
+    "clawbackPresent": null,
+    "clawbackTerms": null,
+    "feeOffsets": null
+  },
+  "investmentPeriod": null,
+  "fundTerm": null,
+  "keyPersonProvisions": null,
+  "sideLetters": {
+    "present": false,
+    "count": null,
+    "summaryNotes": []
+  },
+  "ericaStatus": null,
+  "ascDisclosures": {
+    "fairValueHierarchyPresent": true,
+    "investmentCompanyGuidanceCited": false,
+    "financialHighlightsPresent": null,
+    "subsequentEventsDisclosed": null,
+    "relatedPartyDisclosuresPresent": null,
+    "scheduleOfInvestmentsPresent": true
+  },
+  "auditFirm": null,
+  "sourceCitations": {
+    "nav.total": {
+      "documentId": "multi-ironwood-nav",
+      "documentName": "NAV_Flawed_IronwoodMultiStrategy_Q42023.pdf",
+      "page": 1,
+      "section": "Fund Summary",
+      "excerpt": null
+    },
+    "statedPerformanceMetrics": {
+      "documentId": "multi-ironwood-nav",
+      "documentName": "NAV_Flawed_IronwoodMultiStrategy_Q42023.pdf",
+      "page": 1,
+      "section": "Fund Summary",
+      "excerpt": null
+    },
+    "navBridge": {
+      "documentId": "multi-ironwood-nav",
+      "documentName": "NAV_Flawed_IronwoodMultiStrategy_Q42023.pdf",
+      "page": 2,
+      "section": "Q4 2023 Capital Activity",
+      "excerpt": null
+    },
+    "fairValueHierarchy": {
+      "documentId": "multi-ironwood-nav",
+      "documentName": "NAV_Flawed_IronwoodMultiStrategy_Q42023.pdf",
+      "page": 1,
+      "section": "Portfolio Holdings \u2014 Fair Value Detail",
+      "excerpt": null
+    },
+    "investments": {
+      "documentId": "multi-ironwood-nav",
+      "documentName": "NAV_Flawed_IronwoodMultiStrategy_Q42023.pdf",
+      "page": 1,
+      "section": "Portfolio Holdings \u2014 Fair Value Detail",
+      "excerpt": null
+    },
+    "rollforwards": {
+      "documentId": "multi-ironwood-nav",
+      "documentName": "NAV_Flawed_IronwoodMultiStrategy_Q42023.pdf",
+      "page": 2,
+      "section": "Level 3 Rollforward \u2014 Q4 2023",
+      "excerpt": null
+    },
+    "periodCapitalActivity": {
+      "documentId": "multi-ironwood-nav",
+      "documentName": "NAV_Flawed_IronwoodMultiStrategy_Q42023.pdf",
+      "page": 1,
+      "section": "Fund Summary",
+      "excerpt": null
+    },
+    "valuationDisclosures.independentValuationFirm": {
+      "documentId": "multi-ironwood-nav",
+      "documentName": "NAV_Flawed_IronwoodMultiStrategy_Q42023.pdf",
+      "page": 2,
+      "section": "Valuation Methodology and Disclosures",
+      "excerpt": null
+    }
+  },
+  "promptVersion": "control-run-r3",
+  "modelVersion": "control"
+}

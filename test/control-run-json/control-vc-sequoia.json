@@ -1,0 +1,289 @@
+{
+  "fundName": "Sequoia Growth Fund VI, LP",
+  "fundType": "VC",
+  "vintageYear": 2018,
+  "fiscalYearEnd": "2023-12-31",
+  "currency": "USD",
+  "totalCommittedCapital": 350000,
+  "calledCapital": 285500,
+  "uncalledCapital": 64500,
+  "nav": {
+    "total": 284720,
+    "perUnit": null,
+    "asOfDate": "2023-12-31"
+  },
+  "capitalAccounts": [],
+  "statedPerformanceMetrics": {
+    "tvpi": 1.16,
+    "dpi": 0.17,
+    "rvpi": 1.0,
+    "netIrr": 0.184,
+    "grossIrr": null,
+    "moic": null,
+    "cumulativeDistributions": 48200
+  },
+  "balanceSheet": {
+    "totalAssets": null,
+    "totalLiabilities": 19820,
+    "totalPartnersCapital": 284720,
+    "cashAndEquivalents": 19820,
+    "asOfDate": "2023-12-31"
+  },
+  "navBridge": {
+    "periodLabel": "Q4 2023",
+    "beginningNav": 271440,
+    "contributions": 0,
+    "distributions": 10100,
+    "realizedGainLoss": 12200,
+    "unrealizedGainLoss": 13280,
+    "feesAndExpenses": 2300,
+    "otherChanges": null,
+    "endingNav": 284720
+  },
+  "statementSections": null,
+  "fairValueHierarchy": [
+    {
+      "periodLabel": "Q4 2023",
+      "asOfDate": "2023-12-31",
+      "level1": null,
+      "level2": null,
+      "level3": 284720,
+      "statedTotal": 284720,
+      "balanceSheetInvestmentsLine": 284720
+    }
+  ],
+  "rollforwards": [
+    {
+      "tableName": "Level 3 Rollforward \u2014 Q4 2023",
+      "subject": "level3",
+      "periodLabel": "Q4 2023",
+      "beginningBalance": 253240,
+      "beginningPeriodLabel": "2023-09-30",
+      "flows": [
+        {
+          "label": "Purchases/follow-on investments",
+          "amount": 0
+        },
+        {
+          "label": "Distributions/exits",
+          "amount": -12200
+        },
+        {
+          "label": "Net unrealized appreciation",
+          "amount": 13280
+        }
+      ],
+      "statedEndingBalance": 264900,
+      "endingPeriodLabel": "2023-12-31"
+    }
+  ],
+  "periodCapitalActivity": {
+    "periodLabel": "Q4 2023",
+    "periodCapitalCalls": 0,
+    "periodDistributions": 10100,
+    "cumulativeCalledBeginning": 285500,
+    "cumulativeCalledEnding": 285500,
+    "cumulativeDistributionsBeginning": 38100,
+    "cumulativeDistributionsEnding": 48200
+  },
+  "statementOfChanges": null,
+  "valuationDisclosures": {
+    "independentValuationFirm": "XYZ Valuation Services, LLC",
+    "independentValuationScope": ">80% of portfolio fair value",
+    "methodologySummary": "Level 3 valued quarterly via market approach (comparable company multiples \u2014 Revenue, EBITDA), income approach (DCF), and most recent financing round price as a calibration point.",
+    "unobservableInputsDisclosed": false
+  },
+  "workpaperMetadata": [],
+  "investments": [
+    {
+      "name": "Nexus AI, Inc.",
+      "cost": 18500,
+      "fairValue": 38400,
+      "unrealizedGainLoss": 19900,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "CloudBridge Technologies",
+      "cost": 12000,
+      "fairValue": 22100,
+      "unrealizedGainLoss": 10100,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "MedPath Diagnostics",
+      "cost": 8750,
+      "fairValue": 10900,
+      "unrealizedGainLoss": 2150,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "FinStack Corp.",
+      "cost": 15200,
+      "fairValue": 27800,
+      "unrealizedGainLoss": 12600,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "GreenOps Solutions",
+      "cost": 6400,
+      "fairValue": 8950,
+      "unrealizedGainLoss": 2550,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "DataCore Analytics",
+      "cost": 22000,
+      "fairValue": 41200,
+      "unrealizedGainLoss": 19200,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "Parallax Health",
+      "cost": 5500,
+      "fairValue": 7100,
+      "unrealizedGainLoss": 1600,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "Synthos Bio",
+      "cost": 9200,
+      "fairValue": 15800,
+      "unrealizedGainLoss": 6600,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "Vertex Robotics",
+      "cost": 11000,
+      "fairValue": 18900,
+      "unrealizedGainLoss": 7900,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "Cascade Energy",
+      "cost": 7800,
+      "fairValue": 9750,
+      "unrealizedGainLoss": 1950,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    },
+    {
+      "name": "All other investments (14 companies)",
+      "cost": 64950,
+      "fairValue": 83820,
+      "unrealizedGainLoss": 18870,
+      "asOfDate": "2023-12-31",
+      "fairValueLevel": 3,
+      "valuationMethodology": null
+    }
+  ],
+  "feeTerms": {
+    "managementFeeRate": null,
+    "managementFeeBase": null,
+    "carriedInterestRate": null,
+    "preferredReturn": null,
+    "hurdleRate": null,
+    "catchUpRate": null,
+    "waterfallType": null,
+    "gpCommitmentPercent": null,
+    "clawbackPresent": null,
+    "clawbackTerms": null,
+    "feeOffsets": null
+  },
+  "investmentPeriod": null,
+  "fundTerm": null,
+  "keyPersonProvisions": null,
+  "sideLetters": {
+    "present": false,
+    "count": null,
+    "summaryNotes": []
+  },
+  "ericaStatus": null,
+  "ascDisclosures": {
+    "fairValueHierarchyPresent": true,
+    "investmentCompanyGuidanceCited": true,
+    "financialHighlightsPresent": null,
+    "subsequentEventsDisclosed": null,
+    "relatedPartyDisclosuresPresent": null,
+    "scheduleOfInvestmentsPresent": true
+  },
+  "auditFirm": null,
+  "sourceCitations": {
+    "nav.total": {
+      "documentId": "vc-sequoia-nav",
+      "documentName": "NAV_Clean_SequoiaGrowthVI_VC_Q42023.pdf",
+      "page": 1,
+      "section": "Fund Summary",
+      "excerpt": null
+    },
+    "statedPerformanceMetrics": {
+      "documentId": "vc-sequoia-nav",
+      "documentName": "NAV_Clean_SequoiaGrowthVI_VC_Q42023.pdf",
+      "page": 1,
+      "section": "Fund Summary",
+      "excerpt": null
+    },
+    "navBridge": {
+      "documentId": "vc-sequoia-nav",
+      "documentName": "NAV_Clean_SequoiaGrowthVI_VC_Q42023.pdf",
+      "page": 2,
+      "section": "Q4 2023 Capital Activity",
+      "excerpt": null
+    },
+    "fairValueHierarchy": {
+      "documentId": "vc-sequoia-nav",
+      "documentName": "NAV_Clean_SequoiaGrowthVI_VC_Q42023.pdf",
+      "page": 1,
+      "section": "Portfolio Holdings \u2014 Fair Value Detail",
+      "excerpt": null
+    },
+    "investments": {
+      "documentId": "vc-sequoia-nav",
+      "documentName": "NAV_Clean_SequoiaGrowthVI_VC_Q42023.pdf",
+      "page": 1,
+      "section": "Portfolio Holdings \u2014 Fair Value Detail",
+      "excerpt": null
+    },
+    "rollforwards": {
+      "documentId": "vc-sequoia-nav",
+      "documentName": "NAV_Clean_SequoiaGrowthVI_VC_Q42023.pdf",
+      "page": 2,
+      "section": "Level 3 Rollforward \u2014 Q4 2023",
+      "excerpt": null
+    },
+    "periodCapitalActivity": {
+      "documentId": "vc-sequoia-nav",
+      "documentName": "NAV_Clean_SequoiaGrowthVI_VC_Q42023.pdf",
+      "page": 1,
+      "section": "Fund Summary",
+      "excerpt": null
+    },
+    "valuationDisclosures.independentValuationFirm": {
+      "documentId": "vc-sequoia-nav",
+      "documentName": "NAV_Clean_SequoiaGrowthVI_VC_Q42023.pdf",
+      "page": 2,
+      "section": "Valuation Methodology and Disclosures",
+      "excerpt": null
+    }
+  },
+  "promptVersion": "control-run-r3",
+  "modelVersion": "control"
+}
