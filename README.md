@@ -1,5 +1,7 @@
 # FundLens Audit
 
+**Demo runs on a constrained hosting tier; full multi-agent runs against complete document sets require longer execution limits.**
+
 Multi-agent adversarial fund documentation auditor. Part of the **FundLens** suite of AI-powered fund operations tools for alternative asset professionals (fund accountants, fund administrators, auditors).
 
 Upload a fund's document set — audited financial statements, capital account statements, LPA key terms — and FundLens Audit runs a team of specialized AI agents that prepare, review, challenge, and synthesize an audit-style findings report, grounded in deterministic, code-verified arithmetic.
